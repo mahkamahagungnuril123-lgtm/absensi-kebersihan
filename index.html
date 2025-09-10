@@ -894,18 +894,15 @@
             const loggedInUser = sessionStorage.getItem('absenUser');
             const userRole = sessionStorage.getItem('absenRole');
 
-            // **PERBAIKAN: Ambil pengaturan untuk SEMUA pengguna yang login**
+            // PERUBAHAN LOGIKA UTAMA
             if (loggedInUser) {
+                // Jika sudah login, tetap ambil data terbaru lalu render halaman sesuai peran
                 document.body.classList.add('dashboard-active');
                 loaderText.textContent = 'Menyinkronkan pengaturan dari server...';
-                await fetchAppSettings(); // Pindahkan ke sini agar berjalan untuk semua role
+                await fetchAppSettings(); 
 
                 const loginPage = document.getElementById('login-page');
-                if (loginPage) {
-                    loginPage.innerHTML = '';
-                    loginPage.remove(); 
-                    console.log("Halaman login telah dihapus dari DOM untuk mencegah bug render.");
-                }
+                if (loginPage) loginPage.remove(); 
 
                 if (userRole === "Pengawas") {
                     renderSupervisorPage();
@@ -915,8 +912,16 @@
                     renderAttendancePage(loggedInUser);
                 }
             } else {
+                // Jika BELUM login, ambil data dulu, BARU tampilkan halaman login
                 document.body.classList.remove('dashboard-active');
-                renderLoginPage();
+                loaderText.textContent = 'Mengambil data pegawai...';
+                
+                // Ambil pengaturan SEBELUM merender halaman login
+                await fetchAppSettings(); 
+                
+                // Kirim daftar pegawai yang sudah di-fetch ke fungsi renderLoginPage
+                const employeeList = getEmployeeList();
+                renderLoginPage(employeeList);
             }
             
             const appContainer = document.getElementById('app-container');
@@ -1580,7 +1585,12 @@
      * --- FUNGSI BARU UNTK PERBAIKAN ---
      * Menjalankan semua skrip dan event listener untuk Halaman Login.
      */
-    function renderLoginPage() {
+    /**
+     * --- FUNGSI BARU UNTK PERBAIKAN ---
+     * Menjalankan semua skrip dan event listener untuk Halaman Login.
+     * PERUBAHAN: Sekarang menerima employeeList sebagai parameter.
+     */
+    function renderLoginPage(employeeList = []) { // TAMBAHKAN PARAMETER DI SINI
         showView('login-page');
 
         const roleSelect = document.getElementById('login-role');
@@ -1594,15 +1604,13 @@
         const forgotPasswordLink = document.getElementById('forgot-password-link');
         const passwordStatusText = document.getElementById('password-status-text');
         const exitLoginBtn = document.getElementById('exit-login-btn');
-        const employeeList = getEmployeeList();
         
-        // PERBAIKAN BUG: Menangani jika daftar pegawai kosong
+        // PERUBAHAN: Gunakan employeeList dari parameter, bukan dari getEmployeeList()
         if (employeeList.length > 0) {
             usernameSelect.innerHTML = '<option value="" disabled selected>-- Pilih Nama Anda --</option>' + 
                                    employeeList.map(name => `<option value="${name}">${name}</option>`).join('');
         } else {
             usernameSelect.innerHTML = '<option value="" disabled selected>-- Tidak ada data pegawai --</option>';
-            // Nonaktifkan opsi "Pegawai" jika tidak ada data pegawai
             const pegawaiOption = roleSelect.querySelector('option[value="Pegawai"]');
             if (pegawaiOption) {
                 pegawaiOption.disabled = true;
@@ -1610,11 +1618,11 @@
             }
         }
 
+        // ... SISA KODE DI DALAM FUNGSI INI TETAP SAMA ...
 
         roleSelect.addEventListener('change', () => {
             const role = roleSelect.value;
             const credentials = getCredentials();
-            // Pastikan role tidak null sebelum mengakses properti
             const isPasswordRequired = role ? credentials.passwordStates[role.toLowerCase()] : false;
 
             usernameSelectContainer.classList.toggle('hidden', role !== 'Pegawai');
@@ -1626,14 +1634,12 @@
                 forgotPasswordLink.classList.add('hidden');
             }
 
-            // Selalu tampilkan tombol keluar jika peran sudah dipilih
              exitLoginBtn.classList.toggle('hidden', !role);
             
             let isReadyToLogin = false;
             if (role === 'Pengawas' || role === 'Pengunjung') {
                 isReadyToLogin = true;
             } else if (role === 'Pegawai') {
-                // Pastikan ada pegawai yang bisa dipilih
                 isReadyToLogin = !!usernameSelect.value && employeeList.length > 0;
             }
             loginBtn.disabled = !isReadyToLogin;
@@ -1709,7 +1715,7 @@
 
         const enteredEmail = prompt("-- PEMULIHAN PASSWORD --\n\nMasukkan salah satu email pemulihan Anda untuk verifikasi:");
 
-        if (enteredEmail === null) { // Jika pengguna menekan "Cancel"
+        if (enteredEmail === null) {
             return;
         }
 
@@ -1729,6 +1735,7 @@
         loginBtn.disabled = true;
     });
     }
+    
     // --- ================================== ---
     // ---     LOGIKA INTI & SKRIP HALAMAN      ---
     // --- ================================== ---
