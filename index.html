@@ -567,9 +567,10 @@
 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
 <script>
 // --- ================================== ---
-    // ---      KONFIGURASI & VARIABEL GLOBAL     ---
-    // --- ================================== ---
+// ---      KONFIGURASI & VARIABEL GLOBAL     ---
+// --- ================================== ---
 
+    // **PERUBAHAN 1: URL Apps Script sekarang menjadi variabel terpisah**
     const SPREADSHEET_URL = 'https://script.google.com/macros/s/AKfycbzfuRWOTygLrICdhrQ8ASpY5V-4qtA616guVRUF0eyqu7hRxthrtzPQtFo1e-q-y8Uk6Q/exec';
     const MODEL_URL = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights';
     
@@ -582,125 +583,150 @@
     let fullAttendanceData = []; // Cache untuk semua data absensi dari server
     let editingState = {}; // Menyimpan state saat mengedit baris tabel
     let roomChoicesInstance = null; // Instance untuk dropdown ruangan
+    // **BARU: Variabel untuk menyimpan semua pengaturan dari Google Sheet**
+    let appSettings = {}; 
 
 
     // --- ================================== ---
-    // ---   MANAJEMEN DATA (LOCALSTORAGE)    ---
+    // ---   MANAJEMEN DATA (SHEET & LOCAL)   ---
     // --- ================================== ---
+
+    /**
+     * **BARU: Mengambil semua pengaturan dari Google Sheet.**
+     * Ini menjadi sumber data utama (source of truth) untuk Pengawas.
+     */
+    async function fetchAppSettings() {
+        console.log("Mengambil pengaturan dari Google Sheet...");
+        try {
+            const response = await fetch(`${SPREADSHEET_URL}?action=getSettings&t=${new Date().getTime()}`);
+            if (!response.ok) throw new Error(`Network response was not ok: ${response.statusText}`);
+            const data = await response.json();
+            if (data.result === 'success') {
+                appSettings = data.settings;
+                // Sinkronkan data dari sheet ke localStorage sebagai cache/fallback
+                for (const key in appSettings) {
+                    try {
+                        // Coba parse, jika ini adalah JSON string (seperti daftar/objek)
+                        const parsedValue = JSON.parse(appSettings[key]);
+                        localStorage.setItem(key, JSON.stringify(parsedValue));
+                    } catch (e) {
+                        // Jika bukan JSON string (seperti password biasa), simpan langsung
+                        localStorage.setItem(key, appSettings[key]);
+                    }
+                }
+                console.log("Pengaturan berhasil diambil dan disinkronkan ke local storage.", appSettings);
+                return true;
+            } else {
+                throw new Error(data.message || "Gagal mengambil pengaturan dari sheet.");
+            }
+        } catch (error) {
+            console.error("Gagal mengambil App Settings dari sheet:", error);
+            // Jika gagal, aplikasi akan otomatis menggunakan data dari localStorage
+            alert("Gagal mengambil pengaturan terbaru dari server. Aplikasi akan berjalan menggunakan data terakhir yang tersimpan di perangkat ini. Beberapa data mungkin tidak update.");
+            return false;
+        }
+    }
     
     /**
-     * Fungsi umum yang lebih aman untuk mengambil data dari localStorage.
-     * Jika data tidak ada atau rusak (corrupt), akan mengembalikan nilai default dan menyimpannya.
+     * **BARU: Menyimpan satu atau lebih pengaturan ke Google Sheet.**
+     * @param {object} settingsToSave - Objek berisi key-value yang ingin disimpan. Cth: { employeeList: [...] }
+     */
+    async function saveAppSettings(settingsToSave) {
+        console.log("Menyimpan pengaturan ke Google Sheet:", settingsToSave);
+        try {
+            const payload = {};
+            for (const key in settingsToSave) {
+                const value = settingsToSave[key];
+                // Pastikan objek atau array di-stringify sebelum dikirim
+                payload[key] = typeof value === 'object' ? JSON.stringify(value) : value;
+            }
+
+            const response = await fetch(`${SPREADSHEET_URL}?action=saveSettings`, {
+                method: 'POST',
+                mode: 'no-cors', // Diperlukan untuk tipe redirect dari Apps Script
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            console.log("Pengaturan berhasil dikirim ke server.");
+            return true;
+        } catch (error) {
+            console.error("Gagal menyimpan pengaturan ke sheet:", error);
+            alert("Gagal menyimpan pengaturan ke server. Perubahan hanya tersimpan di perangkat ini. Periksa koneksi internet Anda.");
+            return false;
+        }
+    }
+    
+    /**
+     * **MODIFIKASI: Fungsi ini sekarang hanya membaca dari localStorage.**
+     * localStorage bertindak sebagai cache atau fallback jika gagal konek ke sheet.
      * @param {string} key - Kunci di localStorage
-     * @param {any} defaultList - Nilai default jika data tidak ada/rusak
+     * @param {any} defaultData - Nilai default jika data tidak ada/rusak
      * @returns {any} Data yang sudah di-parse
      */
-    function getListFromStorage(key, defaultList) {
-        const storedList = localStorage.getItem(key);
-        if (storedList) {
+    function getDataFromCache(key, defaultData) {
+        const storedData = localStorage.getItem(key);
+        if (storedData) {
             try {
-                const parsed = JSON.parse(storedList);
-                // Migrasi spesifik untuk format data ruangan lama
-                if (key === 'roomData' && Array.isArray(parsed)) {
-                    console.warn("Format data ruangan lama terdeteksi. Mereset ke default.");
-                    localStorage.setItem(key, JSON.stringify(defaultList));
-                    return defaultList;
+                // Khusus untuk kredensial, jangan di-parse jika bukan JSON
+                if (key.toLowerCase().includes('password') && !storedData.startsWith('{')) {
+                    return storedData;
                 }
-                return parsed;
+                return JSON.parse(storedData);
             } catch (e) {
-                console.error(`Gagal mem-parsing data dari localStorage untuk kunci: ${key}. Mereset ke default. Error:`, e);
-                localStorage.setItem(key, JSON.stringify(defaultList));
-                return defaultList;
+                localStorage.setItem(key, JSON.stringify(defaultData));
+                return defaultData;
             }
         }
-        localStorage.setItem(key, JSON.stringify(defaultList));
-        return defaultList;
+        localStorage.setItem(key, JSON.stringify(defaultData));
+        return defaultData;
     }
 
     /**
-     * Fungsi umum untuk menyimpan data ke localStorage.
-     * @param {string} key - Kunci di localStorage
-     * @param {any} newList - Data baru yang akan disimpan
+     * **BARU: Fungsi helper untuk menyimpan data ke cache (localStorage) dan ke Sheet.**
      */
-    function updateListInStorage(key, newList) { 
-        localStorage.setItem(key, JSON.stringify(newList)); 
+    async function updateAndSaveData(key, newData) {
+        // 1. Simpan ke cache lokal terlebih dahulu untuk responsivitas
+        localStorage.setItem(key, JSON.stringify(newData));
+        // 2. Kirim pembaruan ke Google Sheet
+        await saveAppSettings({ [key]: newData });
     }
-    
+
     // --- Manajemen Kredensial (Password & Email) ---
     function getCredentials() {
-        const stored = localStorage.getItem('loginCredentials');
         const defaults = {
-            pengawasPassword: "ADMIN",
-            pegawaiPassword: "admin",
-            pengunjungPassword: "admin",
+            pengawasPassword: "ADMIN", pegawaiPassword: "admin", pengunjungPassword: "admin",
             recoveryEmails: ["mahkamahagungnuril123@gmail.com"],
-            passwordStates: {
-                pengawas: true,
-                pegawai: true,
-                pengunjung: true
-            }
+            passwordStates: { pengawas: true, pegawai: true, pengunjung: true }
         };
-
-        if (stored) {
-            try {
-                let parsed = JSON.parse(stored);
-                // Migrasi dari format lama ke format baru jika terdeteksi
-                if (parsed.hasOwnProperty('recoveryEmail') && typeof parsed.recoveryEmail === 'string') {
-                    console.log("Format kredensial lama (email tunggal) terdeteksi. Migrasi...");
-                    parsed.recoveryEmails = [parsed.recoveryEmail];
-                    delete parsed.recoveryEmail;
-                }
-                
-                if (parsed.hasOwnProperty('passwordEnabled') && !parsed.hasOwnProperty('passwordStates')) {
-                    console.log("Format kredensial lama (passwordEnabled) terdeteksi. Migrasi...");
-                    parsed.passwordStates = {
-                        pengawas: parsed.passwordEnabled,
-                        pegawai: parsed.passwordEnabled,
-                        pengunjung: parsed.passwordEnabled
-                    };
-                    delete parsed.passwordEnabled;
-                }
-
-                const finalCredentials = { ...defaults, ...parsed };
-                if (!Array.isArray(finalCredentials.recoveryEmails)) finalCredentials.recoveryEmails = defaults.recoveryEmails;
-                if (!finalCredentials.passwordStates) finalCredentials.passwordStates = defaults.passwordStates;
-                
-                return finalCredentials;
-            } catch (e) {
-                localStorage.setItem('loginCredentials', JSON.stringify(defaults));
-                return defaults;
-            }
-        }
-        
-        localStorage.setItem('loginCredentials', JSON.stringify(defaults));
-        return defaults;
+        // Ambil dari berbagai sumber dengan prioritas: appSettings > localStorage > default
+        const cached = getDataFromCache('loginCredentials', defaults);
+        return { ...defaults, ...cached };
     }
 
-    function saveCredentials(newCredentials) {
-        localStorage.setItem('loginCredentials', JSON.stringify(newCredentials));
+    async function saveCredentials(newCredentials) {
+        await updateAndSaveData('loginCredentials', newCredentials);
     }
 
     // --- Manajemen Pegawai ---
-    const getEmployeeList = () => getListFromStorage('employeeList', ["Suryadi", "Arif Munandar", "Para Pegawai Kesekretariatan", "Para Pegawai Kepaniteraan", "Firda Saputra", "Firda Saputra & Rusdi", "Arif Munandar & Suryadi", "Elfiana", "Pegawai Posyabakum", "Eko Setiawan", "Seri Wahyuni"]);
+    const getEmployeeList = () => getDataFromCache('employeeList', ["Suryadi", "Arif Munandar", "Para Pegawai Kesekretariatan", "Para Pegawai Kepaniteraan", "Firda Saputra", "Firda Saputra & Rusdi", "Arif Munandar & Suryadi", "Elfiana", "Pegawai Posyabakum", "Eko Setiawan", "Seri Wahyuni"]);
     
-    function addEmployee(name) {
+    async function addEmployee(name) {
         if (!name || name.trim() === '') { alert('Nama pegawai tidak boleh kosong!'); return; }
         const employeeList = getEmployeeList();
         if (employeeList.map(e => e.toLowerCase()).includes(name.trim().toLowerCase())) { alert('Nama pegawai sudah ada!'); return; }
         employeeList.push(name.trim());
-        updateListInStorage('employeeList', employeeList);
+        await updateAndSaveData('employeeList', employeeList);
     }
     
-    // PERBAIKAN: Fungsi removeEmployee sekarang juga menghapus alokasi tugas pegawai yang bersangkutan.
-    function removeEmployee(name) {
+    async function removeEmployee(name) {
         if (confirm(`Anda yakin ingin menghapus "${name}"?\n\nPERINGATAN: Ini juga akan menghapus semua data pembagian tugas yang terkait dengan nama ini.`)) {
             let employeeList = getEmployeeList().filter(e => e !== name);
-            updateListInStorage('employeeList', employeeList);
+            await updateAndSaveData('employeeList', employeeList);
 
             let jobAllocations = getJobAllocations().filter(alloc => alloc.name !== name);
-            saveJobAllocations(jobAllocations);
+            await saveJobAllocations(jobAllocations);
             
-            // Render ulang tabel pembagian tugas jika sedang ditampilkan
             if (document.getElementById('job-allocation-table')) {
                 renderJobAllocationTable();
             }
@@ -712,21 +738,19 @@
         "Lantai 1": ["Halaman Depan & Front Desk", "Ruang Tunggu VIP", "Ruang Kesekretariatan", "Toilet Kesekretariatan", "Ruang Kepaniteraan", "Toilet Kepaniteraan", "Ruang Kasir", "Ruang PTSP Dalam", "Ruang Server", "Ruang PTSP Luar", "Ruang Posyabakum", "Ruang Jaksa/Pengacara", "Ruang Sidang Utama", "Ruang Sidang Utama Belakang", "Ruang Tahanan", "Toilet Tahanan", "Ruang Tunggu Sidang", "Ruang Sidang 1", "Ruang Mediasi", "Toilet Umum Laki-laki (Para Pihak)", "Toilet Umum Perempuan (Para Pihak)", "Tempat Bermain Anak"],
         "Lantai 2": ["Ruang Ketua", "Toilet Ruang Ketua", "Ruang Tunggu Lantai 2 & Tangga", "Ruang Media Center", "Ruang Panitera", "Toilet Panitera", "Ruang Hakim", "Ruang Perpustakaan", "Gudang Kecil", "Ruang Aula & Tangga", "Ruang Wakil Ketua", "Toilet Wakil Ketua", "Ruang Bendahara", "Ruang Sekretaris", "Toilet Sekretaris", "Toilet Pria (Lantai 2)", "Toilet Wanita (Lantai 2)", "Balkon", "Pantri Coffe", "Arsip Dinamis", "Arsip Perkara"]
     });
-    const getRoomData = () => getListFromStorage('roomData', getDefaultRoomData());
-    function saveRoomData(newData) { updateListInStorage('roomData', newData); }
+    const getRoomData = () => getDataFromCache('roomData', getDefaultRoomData());
+    async function saveRoomData(newData) { await updateAndSaveData('roomData', newData); }
 
     // --- Manajemen GPS ---
     const defaultOfficePolygon = [
-        [4.727530, 96.833301],
-        [4.727530, 96.833832],
-        [4.727048, 96.833832],
-        [4.727048, 96.833301]
+        [4.727530, 96.833301], [4.727530, 96.833832],
+        [4.727048, 96.833832], [4.727048, 96.833301]
     ];
     const defaultOfficeCenter = { lat: 4.72728, lon: 96.83355 };
-    const getGpsPresets = () => getListFromStorage('gpsPresetList', [{ name: "Area Kantor MS Redelong (Default)", coords: defaultOfficePolygon }]);
-    function saveGpsPresets(presets) { updateListInStorage('gpsPresetList', presets); }
+    const getGpsPresets = () => getDataFromCache('gpsPresetList', [{ name: "Area Kantor MS Redelong (Default)", coords: defaultOfficePolygon }]);
+    async function saveGpsPresets(presets) { await updateAndSaveData('gpsPresetList', presets); }
     
-    function addGpsPreset(name, coords) {
+    async function addGpsPreset(name, coords) {
         if (!name || name.trim() === '') { alert('Nama preset tidak boleh kosong!'); return false; }
         const presets = getGpsPresets();
         const existingPresetIndex = presets.findIndex(p => p.name.trim().toLowerCase() === name.trim().toLowerCase());
@@ -740,18 +764,17 @@
         } else {
             presets.push({ name: name.trim(), coords });
         }
-        
-        saveGpsPresets(presets);
+        await saveGpsPresets(presets);
         return true;
     }
 
-    function removeGpsPreset(name) {
+    async function removeGpsPreset(name) {
         if (name === "Area Kantor MS Redelong (Default)") {
             alert("Preset default tidak dapat dihapus.");
             return;
         }
         let presets = getGpsPresets().filter(p => p.name !== name);
-        saveGpsPresets(presets);
+        await saveGpsPresets(presets);
     }
 
     // --- Manajemen Pembagian Tugas ---
@@ -768,11 +791,11 @@
         { name: "Firda Saputra & Rusdi", roomsLantai1: "Toilet Umum Laki-laki (Para Pihak)", roomsLantai2: "" },
         { name: "Arif Munandar & Suryadi", roomsLantai1: "Toilet Umum Perempuan (Para Pihak)", roomsLantai2: "" }
     ]);
-    const getJobAllocations = () => getListFromStorage('jobAllocations', getDefaultJobAllocations());
-    function saveJobAllocations(allocations) { updateListInStorage('jobAllocations', allocations); }
+    const getJobAllocations = () => getDataFromCache('jobAllocations', getDefaultJobAllocations());
+    async function saveJobAllocations(allocations) { await updateAndSaveData('jobAllocations', allocations); }
     // --- ================================== ---
-    // ---       INSIALISASI APLIKASI         ---
-    // --- ================================== ---
+// ---       INSIALISASI APLIKASI         ---
+// --- ================================== ---
 
     /**
      * Membuat animasi partikel di latar belakang.
@@ -856,23 +879,28 @@
             setTimeout(() => reject(new Error('Waktu memuat model habis (>30 dtk). Periksa koneksi internet Anda.')), 30000);
         });
 
-        const startApp = () => {
+        const startApp = async () => {
             console.log("startApp: Memulai logika utama aplikasi.");
             initParticleAnimation();
             const loggedInUser = sessionStorage.getItem('absenUser');
+            const userRole = sessionStorage.getItem('absenRole');
+
+            // **MODIFIKASI: Ambil pengaturan dari sheet jika user adalah pengawas**
+            if (loggedInUser && userRole === "Pengawas") {
+                 loaderText.textContent = 'Menyinkronkan pengaturan dari server...';
+                 await fetchAppSettings(); // Ambil data terbaru saat pengawas login
+            }
+
             if (loggedInUser) {
                 document.body.classList.add('dashboard-active');
 
-                // --- FIX FINAL (JS): Hapus halaman login dari DOM jika sudah login untuk mencegah bug render ---
                 const loginPage = document.getElementById('login-page');
                 if (loginPage) {
-                    loginPage.innerHTML = ''; // Kosongkan isinya terlebih dahulu
+                    loginPage.innerHTML = '';
                     loginPage.remove(); 
                     console.log("Halaman login telah dihapus dari DOM untuk mencegah bug render.");
                 }
-                // --- AKHIR FIX ---
 
-                const userRole = sessionStorage.getItem('absenRole');
                 if (userRole === "Pengawas") {
                     renderSupervisorPage();
                 } else if (userRole === "Pengunjung") {
@@ -885,7 +913,6 @@
                 renderLoginPage();
             }
             
-            // Tampilkan aplikasi setelah semua siap
             const appContainer = document.getElementById('app-container');
             if (appContainer) {
                 appContainer.style.visibility = 'visible';
@@ -896,7 +923,6 @@
         try {
             await Promise.race([loadModels(), timeoutPromise]);
             console.log("Semua model face-api berhasil dimuat.");
-
             if (loaderText) loaderText.textContent = 'Selesai! Memulai aplikasi...';
             initialLoader.style.opacity = '0';
             setTimeout(() => {
@@ -915,7 +941,7 @@
                 </div>`;
             
             document.getElementById('continue-anyway-btn').addEventListener('click', () => {
-                window.faceApiFailed = true; // Set flag global bahwa face-api gagal
+                window.faceApiFailed = true;
                 initialLoader.style.opacity = '0';
                 setTimeout(() => {
                     initialLoader.style.display = 'none';
@@ -927,7 +953,6 @@
     
     /**
      * Merender halaman Absensi untuk Pegawai.
-     * @param {string} loggedInUser - Nama pegawai yang login.
      */
     function renderAttendancePage(loggedInUser) {
         const pageContainer = document.getElementById('attendance-page-wrapper');
@@ -1133,7 +1158,6 @@
                             <div id="progress-report-container"></div>
                         </div>
                     </div>
-
                     <div id="tab-manajemen" class="tab-pane p-6">
                     <h2 class="text-3xl font-bold mb-6 text-text-primary">Manajemen Data</h2>
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -1813,7 +1837,7 @@
                 gpsStatusDiv = document.getElementById('gps-status'), submitButton = document.getElementById('submit-button'),
                 submitStatus = document.getElementById('submit-status'), timeWindowStatusDiv = document.getElementById('time-window-status');
 
-        const attendanceSettings = JSON.parse(localStorage.getItem('attendanceSettings')) || { mode: 'manual' };
+        const attendanceSettings = getDataFromCache('attendanceSettings', { mode: 'manual' });
         const dateInput = document.getElementById('tanggal');
         const timeInput = document.getElementById('waktu');
 
@@ -1970,7 +1994,7 @@
             let isTimeValid = true;
             let timeStatusText = '';
 
-            const attendanceSettings = JSON.parse(localStorage.getItem('attendanceSettings')) || { mode: 'manual' };
+            const attendanceSettings = getDataFromCache('attendanceSettings', { mode: 'manual' });
             if (attendanceSettings.mode === 'window') {
                 const { startTime, endTime } = attendanceSettings;
                 if (startTime && endTime) {
@@ -2031,6 +2055,7 @@
             submitStatus.style.color = 'var(--accent-primary)';
 
             try {
+                // **MODIFIKASI: Aksi tidak perlu ditambahkan, karena ini adalah aksi default (INSERT)**
                 const res = await fetch(SPREADSHEET_URL, { method: 'POST', body: formData });
                 const result = await res.json();
                 if (result.result === 'success') {
@@ -2044,7 +2069,7 @@
                     }
                     if(retakeButton) retakeButton.click(); 
                     
-                    const attendanceSettings = JSON.parse(localStorage.getItem('attendanceSettings')) || { mode: 'manual' };
+                    const attendanceSettings = getDataFromCache('attendanceSettings', { mode: 'manual' });
                     if(attendanceSettings.mode === 'realtime' || attendanceSettings.mode === 'window') {
                         setDateTimeToNow();
                     }
@@ -2142,14 +2167,14 @@
             presetSelect.innerHTML = presets.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
         }
 
-        function handleSavePreset() {
+        async function handleSavePreset() {
             const name = presetNameInput.value;
             if (!name.trim()) {
                 alert("Silakan masukkan nama untuk preset area ini.");
                 return;
             }
             const currentCoords = polygon.getLatLngs()[0].map(latlng => [latlng.lat, latlng.lng]);
-            if (addGpsPreset(name, currentCoords)) {
+            if (await addGpsPreset(name, currentCoords)) {
                 alert(`Preset '${name}' berhasil disimpan!`);
                 renderPresetOptions();
                 presetSelect.value = name;
@@ -2168,13 +2193,13 @@
             }
         }
 
-        function handleDeletePreset() {
+        async function handleDeletePreset() {
             const selectedName = presetSelect.value;
             if (selectedName === "Area Kantor MS Redelong (Default)") {
                  alert("Preset default tidak dapat dihapus."); return;
             }
             if (confirm(`Anda yakin ingin menghapus preset '${selectedName}'?`)) {
-                removeGpsPreset(selectedName);
+                await removeGpsPreset(selectedName);
                 renderPresetOptions();
                 alert(`Preset '${selectedName}' telah dihapus.`);
             }
@@ -2317,19 +2342,25 @@
             </div>`;
 
         try {
-            const response = await fetch(`${SPREADSHEET_URL}?action=read&t=${new Date().getTime()}`);
+            // **MODIFIKASI: URL tidak perlu parameter action untuk membaca data**
+            const response = await fetch(`${SPREADSHEET_URL}?t=${new Date().getTime()}`);
             if (!response.ok) {
                 const errorText = await response.text();
                 throw new Error(`Gagal mengambil data dari server (Status: ${response.status}). Pesan: ${errorText}`);
             }
             
             const responseData = await response.json();
-            if (!responseData || !Array.isArray(responseData)) {
+            if (responseData.result === 'error') { // Cek jika Apps Script mengembalikan error terstruktur
+                throw new Error(responseData.error || "Terjadi error di server Apps Script.");
+            }
+
+            if (!Array.isArray(responseData)) {
                 throw new Error("Format data yang diterima dari server tidak valid (bukan array).");
             }
             
+            // **MODIFIKASI: Gunakan kolom 'timestamp' dari sheet sebagai sumber utama tanggal**
             fullAttendanceData = responseData.map(row => {
-                const parsedDate = new Date(row.timestamp);
+                const parsedDate = new Date(row.timestamp); // Asumsi kolom timestamp ada
                 return {
                     ...row,
                     parsedDate: !isNaN(parsedDate.getTime()) ? parsedDate : null
@@ -2383,9 +2414,10 @@
                 </thead>
                 <tbody>
                     ${data.map(row => {
-                        const formattedDate = formatDateForDisplay(row.parsedDate) || row.tanggal || 'Tanggal Salah';
-                        const formattedTime = row.parsedDate ? row.parsedDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }) + ' WIB' : (row.waktu || '');
-                        const gpsLink = row.gps ? `https://www.google.com/maps?q=${row.gps}` : '#';
+                        // **MODIFIKASI: Gunakan data langsung dari sheet karena sudah diformat**
+                        const formattedDate = row.tanggal || (row.parsedDate ? formatDateForDisplay(row.parsedDate) : 'N/A');
+                        const formattedTime = row.waktu || (row.parsedDate ? row.parsedDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }) + ' WIB' : '');
+                        const gpsLink = row.gps ? `https://www.google.com/maps/search/?api=1&query=${row.gps}` : '#';
                         
                         return `
                         <tr data-timestamp="${row.timestamp || ''}">
@@ -2481,6 +2513,7 @@
         }
         actionCell.innerHTML = `<div class="loader !w-6 !h-6 mx-auto"></div>`;
         const formData = new FormData();
+        // **MODIFIKASI: Tambahkan parameter action yang dibutuhkan Apps Script**
         formData.append('action', 'update');
         formData.append('timestamp', timestamp);
         formData.append('newDate', newDateInput.value);
@@ -2523,6 +2556,7 @@
             return Promise.reject(new Error("Timestamp tidak valid."));
         }
         const formData = new FormData();
+        // **MODIFIKASI: Tambahkan parameter action yang dibutuhkan Apps Script**
         formData.append('action', 'updateAssessment');
         formData.append('timestamp', timestamp);
         formData.append('penilaian', value);
@@ -2640,6 +2674,7 @@
             try {
                 if (rowToDelete) rowToDelete.style.opacity = '0.5';
                 const formData = new FormData();
+                // **MODIFIKASI: Tambahkan parameter action yang dibutuhkan Apps Script**
                 formData.append('action', 'delete');
                 formData.append('timestamp', timestamp);
                 const response = await fetch(SPREADSHEET_URL, { method: 'POST', body: formData });
@@ -2704,8 +2739,8 @@
             body: dataToPrint.map(row => [
                 row.nama || '',
                 row.nama_ruang || '',
-                formatDateForDisplay(row.parsedDate) || 'N/A',
-                row.parsedDate ? row.parsedDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : (row.waktu || '').replace('WIB', '').trim(),
+                row.tanggal || 'N/A', // Langsung ambil dari data
+                (row.waktu || '').replace('WIB', '').trim(), // Langsung ambil dari data
                 row.gps || '',
                 row.penilaian || 'Belum dinilai'
             ]),
@@ -2745,7 +2780,7 @@
     }
 
     function setupAllocationListeners() {
-        document.getElementById('save-allocations-btn').addEventListener('click', () => {
+        document.getElementById('save-allocations-btn').addEventListener('click', async () => {
             const table = document.getElementById('job-allocation-table');
             const newAllocations = [];
             table.querySelectorAll('tbody tr').forEach(row => {
@@ -2756,7 +2791,7 @@
                     roomsLantai2: cells[2].innerText.trim(),
                 });
             });
-            saveJobAllocations(newAllocations);
+            await saveJobAllocations(newAllocations);
             alert('Pembagian tugas berhasil disimpan!');
             const roomData = getRoomData();
             const allLantai1Rooms = new Set(roomData["Lantai 1"] || []);
@@ -2771,7 +2806,7 @@
             if (roomsWereAdded) {
                 roomData["Lantai 1"] = Array.from(allLantai1Rooms).sort();
                 roomData["Lantai 2"] = Array.from(allLantai2Rooms).sort();
-                saveRoomData(roomData);
+                await saveRoomData(roomData);
                 renderFloorManagement(); 
                 alert('Ruangan baru dari tabel tugas telah ditambahkan ke Manajemen Ruangan.');
             }
@@ -2815,7 +2850,7 @@
             currentDate.setDate(currentDate.getDate() + 1);
         }
 
-        const reminderSettings = JSON.parse(localStorage.getItem('reminderSettings')) || { activeDays: [1, 2, 3, 4, 5] };
+        const reminderSettings = getDataFromCache('reminderSettings', { activeDays: [1, 2, 3, 4, 5] });
         const workingDays = new Set(reminderSettings.activeDays);
         
         const allocations = getJobAllocations();
@@ -2972,7 +3007,7 @@
             }
         }
         
-        const currentSettings = JSON.parse(localStorage.getItem('attendanceSettings')) || { mode: 'manual', startTime: '08:00', endTime: '17:00' };
+        const currentSettings = getDataFromCache('attendanceSettings', { mode: 'manual', startTime: '08:00', endTime: '17:00' });
         
         document.querySelector(`input[name="attendance_mode"][value="${currentSettings.mode}"]`).checked = true;
         startTimeInput.value = currentSettings.startTime || '08:00';
@@ -2985,7 +3020,7 @@
             });
         });
 
-        saveBtn.addEventListener('click', () => {
+        saveBtn.addEventListener('click', async () => {
             const selectedMode = document.querySelector('input[name="attendance_mode"]:checked').value;
             const startTime = startTimeInput.value;
             const endTime = endTimeInput.value;
@@ -3001,7 +3036,7 @@
                 endTime: endTime
             };
 
-            localStorage.setItem('attendanceSettings', JSON.stringify(newSettings));
+            await updateAndSaveData('attendanceSettings', newSettings);
             alert(`Pengaturan absensi berhasil disimpan. Mode aktif: ${selectedMode.toUpperCase()}.`);
         });
     }
@@ -3044,7 +3079,7 @@
             });
         });
 
-        saveBtn.addEventListener('click', () => {
+        saveBtn.addEventListener('click', async () => {
             let credentials = getCredentials();
             
             toggleInputs.forEach(input => {
@@ -3056,7 +3091,7 @@
             if (pegawaiInput.value) credentials.pegawaiPassword = pegawaiInput.value;
             if (pengunjungInput.value) credentials.pengunjungPassword = pengunjungInput.value;
 
-            saveCredentials(credentials);
+            await saveCredentials(credentials);
             alert('Pengaturan akses berhasil disimpan!');
             loadSettingsToUI();
         });
@@ -3095,7 +3130,7 @@
             activeDays: [1, 2, 3, 4, 5]
         });
 
-        let currentSettings = JSON.parse(localStorage.getItem(settingsKey)) || getDefaultSettings();
+        let currentSettings = getDataFromCache(settingsKey, getDefaultSettings());
 
         function renderWhatsAppNumbers() {
             whatsAppListContainer.innerHTML = currentSettings.numbers.map(num => `
@@ -3163,13 +3198,13 @@
             });
         });
 
-        saveSettingsBtn.addEventListener('click', () => {
+        saveSettingsBtn.addEventListener('click', async () => {
             currentSettings.interval = parseInt(document.getElementById('reminder-interval').value) || 2;
             currentSettings.unit = document.getElementById('reminder-unit').value;
             currentSettings.startTime = document.getElementById('reminder-start-time').value;
             currentSettings.endTime = document.getElementById('reminder-end-time').value;
 
-            localStorage.setItem(settingsKey, JSON.stringify(currentSettings));
+            await updateAndSaveData(settingsKey, currentSettings);
             alert('Pengaturan pengingat berhasil disimpan dan diaktifkan!');
             statusLog.textContent = `Status: Aktif. Pengecekan setiap ${currentSettings.interval} ${currentSettings.unit}.`;
 
@@ -3188,7 +3223,7 @@
             clearInterval(reminderIntervalId); 
         }
 
-        const settings = JSON.parse(localStorage.getItem('reminderSettings'));
+        const settings = getDataFromCache('reminderSettings', null);
         if (!settings || settings.numbers.length === 0) {
             console.log("Layanan Pengingat dihentikan: tidak ada nomor tujuan.");
             return;
@@ -3300,20 +3335,20 @@
             `).join('') || `<p class="text-text-secondary text-center">Belum ada email pemulihan.</p>`;
         }
         
-        container.addEventListener('click', e => {
+        container.addEventListener('click', async e => {
             if (e.target.closest('.remove-email-btn')) {
                 const emailToRemove = e.target.closest('.remove-email-btn').dataset.email;
                 if(confirm(`Yakin ingin menghapus email "${emailToRemove}"?`)){
                     let credentials = getCredentials();
                     credentials.recoveryEmails = credentials.recoveryEmails.filter(e => e !== emailToRemove);
-                    saveCredentials(credentials);
+                    await saveCredentials(credentials);
                     renderEmailList();
                     alert("Email berhasil dihapus.");
                 }
             }
         });
 
-        addBtn.addEventListener('click', () => {
+        addBtn.addEventListener('click', async () => {
             const newEmail = input.value.trim();
             if (!newEmail.includes('@') || !newEmail.includes('.')) {
                 alert('Silakan masukkan alamat email yang valid.');
@@ -3325,7 +3360,7 @@
                  return;
             }
             credentials.recoveryEmails.push(newEmail);
-            saveCredentials(credentials);
+            await saveCredentials(credentials);
             renderEmailList();
             input.value = '';
             alert(`Email ${newEmail} berhasil ditambahkan.`);
@@ -3459,15 +3494,14 @@
                     <button class="btn btn-danger !py-1 !px-3 text-xs remove-btn" data-name="${name}">Hapus</button>
                 </div>`).join('') || `<p class="text-text-secondary">Belum ada data ${type}.</p>`;
             containerEl.querySelectorAll('.remove-btn').forEach(button => {
-                button.addEventListener('click', e => {
+                button.addEventListener('click', async e => {
                     const name = e.target.dataset.name;
-                    // Konfirmasi sudah ada di dalam fungsi removeFunc
-                    removeFunc(name); 
+                    await removeFunc(name); 
                     renderList(); 
                 });
             });
         }
-        addBtnEl.addEventListener('click', () => { addFunc(inputEl.value); inputEl.value = ''; renderList(); });
+        addBtnEl.addEventListener('click', async () => { await addFunc(inputEl.value); inputEl.value = ''; renderList(); });
         renderList();
     }
     
@@ -3498,28 +3532,28 @@
         }
     }
 
-    function addFloor() {
+    async function addFloor() {
         const input = document.getElementById('new-floor-name');
         const newFloorName = input.value.trim();
         if (!newFloorName) { alert('Nama lantai tidak boleh kosong!'); return; }
         const roomData = getRoomData();
         if (roomData[newFloorName]) { alert('Nama lantai sudah ada!'); return; }
         roomData[newFloorName] = [];
-        saveRoomData(roomData);
+        await saveRoomData(roomData);
         renderFloorManagement();
         input.value = '';
     }
 
-    function removeFloor(floorName) {
+    async function removeFloor(floorName) {
         if (confirm(`Yakin ingin menghapus lantai "${floorName}" dan SEMUA ruangan di dalamnya?`)) {
             const roomData = getRoomData();
             delete roomData[floorName];
-            saveRoomData(roomData);
+            await saveRoomData(roomData);
             renderFloorManagement();
         }
     }
     
-    function addRoomToFloor() {
+    async function addRoomToFloor() {
         const roomInput = document.getElementById('new-room-name');
         const floorSelect = document.getElementById('floor-select');
         const newRoomName = roomInput.value.trim();
@@ -3528,16 +3562,16 @@
         const roomData = getRoomData();
         if (roomData[selectedFloor].includes(newRoomName)) { alert(`Ruangan "${newRoomName}" sudah ada.`); return; }
         roomData[selectedFloor].push(newRoomName);
-        saveRoomData(roomData);
+        await saveRoomData(roomData);
         renderRoomListByFloor();
         roomInput.value = '';
     }
 
-    function removeRoomFromFloor(floorName, roomName) {
+    async function removeRoomFromFloor(floorName, roomName) {
          if (confirm(`Yakin ingin menghapus ruangan "${roomName}" dari ${floorName}?`)) {
             const roomData = getRoomData();
             roomData[floorName] = roomData[floorName].filter(room => room !== roomName);
-            saveRoomData(roomData);
+            await saveRoomData(roomData);
             renderRoomListByFloor();
         }
     }
@@ -3604,6 +3638,7 @@
             
             resultsHTML += createCategory('Sensor: Konektivitas & Dependensi');
             try {
+                // **MODIFIKASI: Gunakan action=ping**
                 const response = await fetch(`${SPREADSHEET_URL}?action=ping&t=${new Date().getTime()}`);
                 if (response.ok) {
                     resultsHTML += createResultItem('ok', 'Konektivitas Google Sheets', 'Berhasil terhubung ke server spreadsheet.');
