@@ -2059,8 +2059,11 @@
             
             const now = new Date();
             const timezoneOffset = now.getTimezoneOffset() * 60000;
-            const localISOTime = new Date(now - timezoneOffset).toISOString().slice(0, -1);
-            formData.set('timestamp', localISOTime);
+            const localISOTime = new Date(now - timezoneOffset).toISOString(); // Dibuat lebih presisi dengan milidetik
+
+// BUAT ID YANG DIJAMIN UNIK dengan menambahkan angka acak di akhir
+const uniqueId = `${localISOTime}-${Math.random().toString(36).substring(2, 9)}`;
+formData.set('timestamp', uniqueId); // Kirim ID unik ini sebagai timestamp
             const tanggalInput = document.getElementById('tanggal').value;
             const waktuInput = document.getElementById('waktu').value;
             if (!tanggalInput || !waktuInput) {
@@ -2963,12 +2966,27 @@
         container.style.opacity = '0.5'; 
         
         try {
-            const targetDate = new Date(`${dateKey}T08:00:00`);
-            
-            const timezoneOffset = targetDate.getTimezoneOffset() * 60000;
-            const timestamp = new Date(targetDate - timezoneOffset).toISOString().slice(0, -1);
-            const formattedDate = targetDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-            const formattedTime = targetDate.toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit' }) + ' WIB';
+            // --- MULAI BLOK KODE BARU ---
+
+// 1. Buat menit & detik secara acak (0-59)
+const randomMinute = Math.floor(Math.random() * 60);
+const randomSecond = Math.floor(Math.random() * 60);
+
+// 2. Format menit & detik agar selalu 2 digit (contoh: 05, 23, 59)
+const minuteString = String(randomMinute).padStart(2, '0');
+const secondString = String(randomSecond).padStart(2, '0');
+
+// 3. Gabungkan menjadi format waktu dengan jam 07 dan zona waktu WIB (+07:00)
+// Ini cara paling akurat untuk menentukan tanggal dan waktu dengan timezone
+const randomTimeString = `07:${minuteString}:${secondString}`;
+const targetDate = new Date(`${dateKey}T${randomTimeString}+07:00`);
+
+// 4. Siapkan data, sekarang semuanya otomatis berdasarkan waktu acak di atas
+const timestamp = targetDate.toISOString(); // .toISOString() sudah dalam format UTC yang benar
+const formattedDate = targetDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' });
+const formattedTime = targetDate.toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }) + ' WIB';
+
+// --- SELESAI BLOK KODE BARU ---
 
             const centerGps = getPolygonCenter();
             
