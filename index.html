@@ -570,7 +570,6 @@
 // ---      KONFIGURASI & VARIABEL GLOBAL     ---
 // --- ================================== ---
 
-    // **PERUBAHAN 1: URL Apps Script sekarang menjadi variabel terpisah**
     const SPREADSHEET_URL = 'https://script.google.com/macros/s/AKfycbzfuRWOTygLrICdhrQ8ASpY5V-4qtA616guVRUF0eyqu7hRxthrtzPQtFo1e-q-y8Uk6Q/exec';
     const MODEL_URL = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights';
     
@@ -592,7 +591,7 @@
     // --- ================================== ---
 
     /**
-     * **BARU: Mengambil semua pengaturan dari Google Sheet.**
+     * Mengambil semua pengaturan dari Google Sheet.
      * Ini menjadi sumber data utama (source of truth) untuk Pengawas.
      */
     async function fetchAppSettings() {
@@ -607,8 +606,14 @@
                 for (const key in appSettings) {
                     try {
                         // Coba parse, jika ini adalah JSON string (seperti daftar/objek)
-                        const parsedValue = JSON.parse(appSettings[key]);
-                        localStorage.setItem(key, JSON.stringify(parsedValue));
+                        // PERBAIKAN: Tangani nilai yang sudah berupa objek/array dari Apps Script
+                        const value = appSettings[key];
+                        if (typeof value === 'object') {
+                             localStorage.setItem(key, JSON.stringify(value));
+                        } else {
+                            const parsedValue = JSON.parse(value);
+                            localStorage.setItem(key, JSON.stringify(parsedValue));
+                        }
                     } catch (e) {
                         // Jika bukan JSON string (seperti password biasa), simpan langsung
                         localStorage.setItem(key, appSettings[key]);
@@ -628,7 +633,7 @@
     }
     
     /**
-     * **BARU: Menyimpan satu atau lebih pengaturan ke Google Sheet.**
+     * Menyimpan satu atau lebih pengaturan ke Google Sheet.
      * @param {object} settingsToSave - Objek berisi key-value yang ingin disimpan. Cth: { employeeList: [...] }
      */
     async function saveAppSettings(settingsToSave) {
@@ -641,17 +646,15 @@
                 payload[key] = typeof value === 'object' ? JSON.stringify(value) : value;
             }
 
-            // PERBAIKAN: Kirim sebagai request standar (bukan FormData) agar sesuai dengan Apps Script
+            // Kirim sebagai request standar agar sesuai dengan Apps Script
             const response = await fetch(`${SPREADSHEET_URL}?action=saveSettings`, {
                 method: 'POST',
-                // HAPUS BARIS 'mode: 'no-cors',' DARI SINI
                 headers: {
                     'Content-Type': 'text/plain;charset=utf-8', // Gunakan text/plain untuk menghindari preflight CORS
                 },
-                body: JSON.stringify(payload) // Body tetap string JSON
+                body: JSON.stringify(payload) 
             });
 
-            // Karena tidak lagi no-cors, kita bisa cek responsnya
             const result = await response.json();
             if (result.result === 'success') {
                 console.log("Pengaturan berhasil disimpan di server.");
@@ -667,8 +670,7 @@
     }
     
     /**
-     * **MODIFIKASI: Fungsi ini sekarang hanya membaca dari localStorage.**
-     * localStorage bertindak sebagai cache atau fallback jika gagal konek ke sheet.
+     * Membaca data dari cache (localStorage).
      * @param {string} key - Kunci di localStorage
      * @param {any} defaultData - Nilai default jika data tidak ada/rusak
      * @returns {any} Data yang sudah di-parse
@@ -692,7 +694,7 @@
     }
 
     /**
-     * **BARU: Fungsi helper untuk menyimpan data ke cache (localStorage) dan ke Sheet.**
+     * Helper untuk menyimpan data ke cache (localStorage) dan ke Sheet.
      */
     async function updateAndSaveData(key, newData) {
         // 1. Simpan ke cache lokal terlebih dahulu untuk responsivitas
@@ -708,7 +710,6 @@
             recoveryEmails: ["mahkamahagungnuril123@gmail.com"],
             passwordStates: { pengawas: true, pegawai: true, pengunjung: true }
         };
-        // Ambil dari berbagai sumber dengan prioritas: appSettings > localStorage > default
         const cached = getDataFromCache('loginCredentials', defaults);
         return { ...defaults, ...cached };
     }
@@ -756,6 +757,27 @@
         [4.727048, 96.833832], [4.727048, 96.833301]
     ];
     const defaultOfficeCenter = { lat: 4.72728, lon: 96.83355 };
+
+    /**
+     * PERBAIKAN: Fungsi getActivePolygon sekarang mengambil dari appSettings (sheet) dulu,
+     * baru fallback ke localStorage, lalu ke default. Ini memastikan data persisten.
+     */
+    const getActivePolygon = () => {
+        // Prioritas 1: Dari appSettings yang baru di-fetch dari sheet
+        if (appSettings && appSettings.activeGpsCoords) {
+            try {
+                 // Cek jika nilainya string JSON, parse dulu
+                if (typeof appSettings.activeGpsCoords === 'string') {
+                    return JSON.parse(appSettings.activeGpsCoords);
+                }
+                // Jika sudah objek/array, langsung kembalikan
+                return appSettings.activeGpsCoords;
+            } catch(e) { console.error("Gagal parse activeGpsCoords dari appSettings"); }
+        }
+        // Prioritas 2: Dari cache local storage
+        return getDataFromCache('activeGpsCoords', defaultOfficePolygon);
+    };
+
     const getGpsPresets = () => getDataFromCache('gpsPresetList', [{ name: "Area Kantor MS Redelong (Default)", coords: defaultOfficePolygon }]);
     async function saveGpsPresets(presets) { await updateAndSaveData('gpsPresetList', presets); }
     
@@ -802,7 +824,8 @@
     ]);
     const getJobAllocations = () => getDataFromCache('jobAllocations', getDefaultJobAllocations());
     async function saveJobAllocations(allocations) { await updateAndSaveData('jobAllocations', allocations); }
-    // --- ================================== ---
+    
+// --- ================================== ---
 // ---       INSIALISASI APLIKASI         ---
 // --- ================================== ---
 
@@ -862,12 +885,44 @@
 
     /**
      * Titik masuk utama aplikasi setelah DOM siap.
+     * PERBAIKAN: Logika diubah untuk mempercepat waktu login.
      */
     document.addEventListener('DOMContentLoaded', async () => {
         console.log("DOM Content Loaded. Memulai inisialisasi aplikasi.");
         const initialLoader = document.getElementById('initial-loader');
         const loaderText = initialLoader.querySelector('p');
+        const appContainer = document.getElementById('app-container');
 
+        const loggedInUser = sessionStorage.getItem('absenUser');
+        const userRole = sessionStorage.getItem('absenRole');
+
+        initParticleAnimation();
+
+        // --- TAHAP 1: Ambil data penting dan tampilkan UI secepat mungkin ---
+        loaderText.textContent = 'Menyinkronkan pengaturan...';
+        await fetchAppSettings();
+
+        if (!loggedInUser) {
+            // Jika belum login, langsung tampilkan halaman login.
+            document.body.classList.remove('dashboard-active');
+            const employeeList = getEmployeeList();
+            renderLoginPage(employeeList);
+            initialLoader.style.opacity = '0';
+            setTimeout(() => {
+                initialLoader.style.display = 'none';
+                if (appContainer) {
+                    appContainer.style.visibility = 'visible';
+                    appContainer.style.opacity = '1';
+                }
+            }, 500);
+        } else {
+            // Jika sudah login, dashboard akan ditampilkan setelah model AI dimuat.
+            document.body.classList.add('dashboard-active');
+            const loginPage = document.getElementById('login-page');
+            if (loginPage) loginPage.remove();
+        }
+
+        // --- TAHAP 2: Muat model AI yang berat di latar belakang ---
         const modelsToLoad = [
             { name: 'Detektor Wajah', task: faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL) },
             { name: 'Penanda Wajah', task: faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL) },
@@ -877,7 +932,7 @@
 
         const loadModels = async () => {
             for (let i = 0; i < modelsToLoad.length; i++) {
-                if (loaderText) {
+                if (loggedInUser) { // Hanya update loader text jika sedang menunggu dashboard
                     loaderText.textContent = `Memuat model AI (${i + 1}/${modelsToLoad.length}): ${modelsToLoad[i].name}...`;
                 }
                 await modelsToLoad[i].task;
@@ -888,22 +943,9 @@
             setTimeout(() => reject(new Error('Waktu memuat model habis (>30 dtk). Periksa koneksi internet Anda.')), 30000);
         });
 
-        const startApp = async () => {
-            console.log("startApp: Memulai logika utama aplikasi.");
-            initParticleAnimation();
-            const loggedInUser = sessionStorage.getItem('absenUser');
-            const userRole = sessionStorage.getItem('absenRole');
-
-            // PERUBAHAN LOGIKA UTAMA
+        // --- TAHAP 3: Tampilkan dashboard (jika sudah login) setelah model siap ---
+        const renderDashboardIfNeeded = () => {
             if (loggedInUser) {
-                // Jika sudah login, tetap ambil data terbaru lalu render halaman sesuai peran
-                document.body.classList.add('dashboard-active');
-                loaderText.textContent = 'Menyinkronkan pengaturan dari server...';
-                await fetchAppSettings(); 
-
-                const loginPage = document.getElementById('login-page');
-                if (loginPage) loginPage.remove(); 
-
                 if (userRole === "Pengawas") {
                     renderSupervisorPage();
                 } else if (userRole === "Pengunjung") {
@@ -911,57 +953,42 @@
                 } else {
                     renderAttendancePage(loggedInUser);
                 }
-            } else {
-                // Jika BELUM login, ambil data dulu, BARU tampilkan halaman login
-                document.body.classList.remove('dashboard-active');
-                loaderText.textContent = 'Mengambil data pegawai...';
                 
-                // Ambil pengaturan SEBELUM merender halaman login
-                await fetchAppSettings(); 
-                
-                // Kirim daftar pegawai yang sudah di-fetch ke fungsi renderLoginPage
-                const employeeList = getEmployeeList();
-                renderLoginPage(employeeList);
-            }
-            
-            const appContainer = document.getElementById('app-container');
-            if (appContainer) {
-                appContainer.style.visibility = 'visible';
-                appContainer.style.opacity = '1';
+                initialLoader.style.opacity = '0';
+                 setTimeout(() => {
+                    initialLoader.style.display = 'none';
+                     if (appContainer) {
+                        appContainer.style.visibility = 'visible';
+                        appContainer.style.opacity = '1';
+                    }
+                }, 500);
             }
         };
 
         try {
             await Promise.race([loadModels(), timeoutPromise]);
             console.log("Semua model face-api berhasil dimuat.");
-            if (loaderText) loaderText.textContent = 'Selesai! Memulai aplikasi...';
-            initialLoader.style.opacity = '0';
-            setTimeout(() => {
-                initialLoader.style.display = 'none';
-                startApp();
-            }, 800);
+            renderDashboardIfNeeded();
 
         } catch (e) {
             console.error("Gagal memuat model face-api:", e);
-            initialLoader.innerHTML = `
-                <div class="p-4 text-center">
-                    <h3 class="text-xl font-bold text-danger-color mb-3">Gagal Memuat Komponen AI</h3>
-                    <p class="text-text-secondary mb-4">Tidak dapat mengunduh model deteksi wajah. Ini biasanya disebabkan oleh koneksi internet yang lambat atau terputus.</p>
-                    <p class="text-text-secondary mb-4">Aplikasi akan lanjut tanpa fitur validasi wajah otomatis.</p>
-                    <button id="continue-anyway-btn" class="btn btn-warning mt-4">Lanjutkan Tanpa Deteksi Wajah</button>
-                </div>`;
+            window.faceApiFailed = true; // Tandai bahwa API gagal
             
-            document.getElementById('continue-anyway-btn').addEventListener('click', () => {
-                window.faceApiFailed = true;
-                initialLoader.style.opacity = '0';
-                setTimeout(() => {
-                    initialLoader.style.display = 'none';
-                    startApp();
-                }, 500);
-            });
+            if (loggedInUser) { // Jika sudah login tapi model gagal, tampilkan dashboard dengan peringatan
+                alert("Gagal memuat komponen AI. Fitur validasi wajah otomatis akan dinonaktifkan.");
+                renderDashboardIfNeeded();
+            } else { // Jika di halaman login, tampilkan tombol untuk lanjut
+                 initialLoader.innerHTML = `
+                    <div class="p-4 text-center">
+                        <h3 class="text-xl font-bold text-danger-color mb-3">Gagal Memuat Komponen AI</h3>
+                        <p class="text-text-secondary mb-4">Tidak dapat mengunduh model deteksi wajah. Ini biasanya disebabkan oleh koneksi internet yang lambat atau terputus.</p>
+                        <p class="text-text-secondary mb-4">Anda tetap bisa melanjutkan tanpa fitur validasi wajah otomatis.</p>
+                    </div>`;
+                // Tombol tidak diperlukan karena login page sudah terlihat di belakang loader
+            }
         }
     });
-    
+
     /**
      * Merender halaman Absensi untuk Pegawai.
      */
@@ -1582,15 +1609,10 @@
     }
 
     /**
-     * --- FUNGSI BARU UNTK PERBAIKAN ---
      * Menjalankan semua skrip dan event listener untuk Halaman Login.
+     * Menerima employeeList sebagai parameter untuk mempercepat render.
      */
-    /**
-     * --- FUNGSI BARU UNTK PERBAIKAN ---
-     * Menjalankan semua skrip dan event listener untuk Halaman Login.
-     * PERUBAHAN: Sekarang menerima employeeList sebagai parameter.
-     */
-    function renderLoginPage(employeeList = []) { // TAMBAHKAN PARAMETER DI SINI
+    function renderLoginPage(employeeList = []) {
         showView('login-page');
 
         const roleSelect = document.getElementById('login-role');
@@ -1605,7 +1627,7 @@
         const passwordStatusText = document.getElementById('password-status-text');
         const exitLoginBtn = document.getElementById('exit-login-btn');
         
-        // PERUBAHAN: Gunakan employeeList dari parameter, bukan dari getEmployeeList()
+        // Gunakan employeeList dari parameter, bukan memanggil getEmployeeList() lagi
         if (employeeList.length > 0) {
             usernameSelect.innerHTML = '<option value="" disabled selected>-- Pilih Nama Anda --</option>' + 
                                    employeeList.map(name => `<option value="${name}">${name}</option>`).join('');
@@ -1617,8 +1639,6 @@
                 pegawaiOption.textContent = 'Pegawai (Tidak ada data)';
             }
         }
-
-        // ... SISA KODE DI DALAM FUNGSI INI TETAP SAMA ...
 
         roleSelect.addEventListener('change', () => {
             const role = roleSelect.value;
@@ -1741,12 +1761,6 @@
     // --- ================================== ---
 
     /**
-     * Mengambil koordinat polygon area GPS yang aktif dari localStorage.
-     * @returns {Array} Array koordinat.
-     */
-    const getActivePolygon = () => JSON.parse(localStorage.getItem('activeGpsCoords')) || defaultOfficePolygon;
-    
-    /**
      * Mengatur input tanggal dan waktu ke waktu saat ini.
      */
     function setDateTimeToNow() {
@@ -1838,7 +1852,6 @@
             faceStatusDiv.className = `status-badge ${detections.length > 0 ? 'success' : 'danger'}`;
         }, 800); // Interval sedikit diperlambat untuk performa
     }
-
     /**
      * Menjalankan semua skrip yang diperlukan untuk halaman absensi pegawai.
      */
@@ -2068,7 +2081,6 @@
             submitStatus.style.color = 'var(--accent-primary)';
 
             try {
-                // **MODIFIKASI: Aksi tidak perlu ditambahkan, karena ini adalah aksi default (INSERT)**
                 const res = await fetch(SPREADSHEET_URL, { method: 'POST', body: formData });
                 const result = await res.json();
                 if (result.result === 'success') {
@@ -2109,7 +2121,6 @@
     }
     
     function initGpsEditor() {
-        const ACTIVE_COORDS_KEY = 'activeGpsCoords';
         let map, polygon, centerMarker, cornerMarkers = [];
         const modeRadios = document.querySelectorAll('input[name="gps_mode"]');
         const centerSizeModeContainer = document.getElementById('center-size-mode-container');
@@ -2169,10 +2180,24 @@
             document.getElementById('center-lon-input').value = centerLon.toFixed(8);
         }
 
-        function saveAndNotify(coords) {
-            localStorage.setItem(ACTIVE_COORDS_KEY, JSON.stringify(coords));
-            document.getElementById('active-preset-status').textContent = 'Area Aktif Telah Diterapkan';
-            alert('Area absensi baru berhasil diterapkan dan disimpan!');
+        /**
+         * PERBAIKAN: Fungsi ini sekarang menyimpan ke Google Sheet juga
+         */
+        async function saveAndNotify(coords) {
+            generateAreaBtn.disabled = true;
+            generateAreaBtn.innerHTML = `<div class="loader inline-loader"></div> Menyimpan...`;
+            try {
+                // Panggil fungsi untuk update ke local storage DAN Google Sheet
+                await updateAndSaveData('activeGpsCoords', coords);
+                document.getElementById('active-preset-status').textContent = 'Area Aktif Telah Diterapkan';
+                alert('Area absensi baru berhasil diterapkan dan disimpan di server!');
+            } catch (error) {
+                console.error("Gagal menyimpan area GPS ke server:", error);
+                alert("Gagal menyimpan area GPS ke server. Perubahan hanya tersimpan sementara di perangkat ini.");
+            } finally {
+                generateAreaBtn.disabled = false;
+                generateAreaBtn.textContent = 'Terapkan & Simpan Area Aktif';
+            }
         }
         
         function renderPresetOptions() {
@@ -2287,7 +2312,7 @@
                 }
             }
             updatePolygonOnMap(newCoords);
-            saveAndNotify(newCoords);
+            saveAndNotify(newCoords); // Panggil fungsi yang sudah diperbaiki
         });
 
         document.getElementById('geolocate-btn').addEventListener('click', (e) => {
@@ -2355,7 +2380,6 @@
             </div>`;
 
         try {
-            // **MODIFIKASI: URL tidak perlu parameter action untuk membaca data**
             const response = await fetch(`${SPREADSHEET_URL}?t=${new Date().getTime()}`);
             if (!response.ok) {
                 const errorText = await response.text();
@@ -2363,7 +2387,7 @@
             }
             
             const responseData = await response.json();
-            if (responseData.result === 'error') { // Cek jika Apps Script mengembalikan error terstruktur
+            if (responseData.result === 'error') {
                 throw new Error(responseData.error || "Terjadi error di server Apps Script.");
             }
 
@@ -2371,9 +2395,8 @@
                 throw new Error("Format data yang diterima dari server tidak valid (bukan array).");
             }
             
-            // **MODIFIKASI: Gunakan kolom 'timestamp' dari sheet sebagai sumber utama tanggal**
             fullAttendanceData = responseData.map(row => {
-                const parsedDate = new Date(row.timestamp); // Asumsi kolom timestamp ada
+                const parsedDate = new Date(row.timestamp);
                 return {
                     ...row,
                     parsedDate: !isNaN(parsedDate.getTime()) ? parsedDate : null
@@ -2427,10 +2450,9 @@
                 </thead>
                 <tbody>
                     ${data.map(row => {
-                        // **MODIFIKASI: Gunakan data langsung dari sheet karena sudah diformat**
                         const formattedDate = row.tanggal || (row.parsedDate ? formatDateForDisplay(row.parsedDate) : 'N/A');
                         const formattedTime = row.waktu || (row.parsedDate ? row.parsedDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }) + ' WIB' : '');
-                        const gpsLink = row.gps ? `https://www.google.com/maps/search/?api=1&query=${row.gps}` : '#';
+                        const gpsLink = row.gps ? `https://www.google.com/maps?q=${row.gps}` : '#';
                         
                         return `
                         <tr data-timestamp="${row.timestamp || ''}">
@@ -2526,7 +2548,6 @@
         }
         actionCell.innerHTML = `<div class="loader !w-6 !h-6 mx-auto"></div>`;
         const formData = new FormData();
-        // **MODIFIKASI: Tambahkan parameter action yang dibutuhkan Apps Script**
         formData.append('action', 'update');
         formData.append('timestamp', timestamp);
         formData.append('newDate', newDateInput.value);
@@ -2569,7 +2590,6 @@
             return Promise.reject(new Error("Timestamp tidak valid."));
         }
         const formData = new FormData();
-        // **MODIFIKASI: Tambahkan parameter action yang dibutuhkan Apps Script**
         formData.append('action', 'updateAssessment');
         formData.append('timestamp', timestamp);
         formData.append('penilaian', value);
@@ -2687,7 +2707,6 @@
             try {
                 if (rowToDelete) rowToDelete.style.opacity = '0.5';
                 const formData = new FormData();
-                // **MODIFIKASI: Tambahkan parameter action yang dibutuhkan Apps Script**
                 formData.append('action', 'delete');
                 formData.append('timestamp', timestamp);
                 const response = await fetch(SPREADSHEET_URL, { method: 'POST', body: formData });
@@ -2752,8 +2771,8 @@
             body: dataToPrint.map(row => [
                 row.nama || '',
                 row.nama_ruang || '',
-                row.tanggal || 'N/A', // Langsung ambil dari data
-                (row.waktu || '').replace('WIB', '').trim(), // Langsung ambil dari data
+                row.tanggal || 'N/A',
+                (row.waktu || '').replace('WIB', '').trim(),
                 row.gps || '',
                 row.penilaian || 'Belum dinilai'
             ]),
@@ -2934,7 +2953,6 @@
             </tbody>`;
 
         container.innerHTML = `<table class="daily-recap-table">${tableHead}${tableBody}</table>`;
-        // PERBAIKAN BUG: Memanggil fungsi dual scrollbar yang sudah diperbarui
         setupDualScrollbars('progress-report-container', 'top-scrollbar-wrapper');
     }
 
@@ -3407,8 +3425,7 @@
                     }
                 }, 150);
             }
-
-            // PERBAIKAN: Panggil fungsi dual scrollbar saat tab yang relevan aktif
+            
             if (tabName === 'proses') {
                 setupDualScrollbars('job-allocation-container', 'job-allocation-top-scrollbar-wrapper');
                 setupDualScrollbars('progress-report-container', 'top-scrollbar-wrapper');
@@ -3651,7 +3668,6 @@
             
             resultsHTML += createCategory('Sensor: Konektivitas & Dependensi');
             try {
-                // **MODIFIKASI: Gunakan action=ping**
                 const response = await fetch(`${SPREADSHEET_URL}?action=ping&t=${new Date().getTime()}`);
                 if (response.ok) {
                     resultsHTML += createResultItem('ok', 'Konektivitas Google Sheets', 'Berhasil terhubung ke server spreadsheet.');
@@ -3672,7 +3688,7 @@
             }
             
             resultsHTML += createCategory('Sensor: Integritas Data Lokal');
-            const localDataKeys = ['employeeList', 'roomData', 'jobAllocations', 'gpsPresetList', 'loginCredentials', 'attendanceSettings', 'reminderSettings'];
+            const localDataKeys = ['employeeList', 'roomData', 'jobAllocations', 'gpsPresetList', 'loginCredentials', 'attendanceSettings', 'reminderSettings', 'activeGpsCoords'];
             let dataOk = true;
             localDataKeys.forEach(key => {
                 const data = localStorage.getItem(key);
@@ -3778,13 +3794,12 @@
         const logoutBtn = document.getElementById(buttonId);
         if(logoutBtn) {
             logoutBtn.addEventListener('click', () => {
-                // PENINGKATAN: Hancurkan instance Choices.js saat logout
                 if (roomChoicesInstance) {
                     roomChoicesInstance.destroy();
                     roomChoicesInstance = null;
                 }
                 sessionStorage.clear();
-                window.location.reload(); // Reload akan otomatis mematikan stream
+                window.location.reload();
             });
         }
     }
