@@ -885,14 +885,11 @@
             const loggedInUser = sessionStorage.getItem('absenUser');
             const userRole = sessionStorage.getItem('absenRole');
 
-            // **MODIFIKASI: Ambil pengaturan dari sheet jika user adalah pengawas**
-            if (loggedInUser && userRole === "Pengawas") {
-                 loaderText.textContent = 'Menyinkronkan pengaturan dari server...';
-                 await fetchAppSettings(); // Ambil data terbaru saat pengawas login
-            }
-
+            // **PERBAIKAN: Ambil pengaturan untuk SEMUA pengguna yang login**
             if (loggedInUser) {
                 document.body.classList.add('dashboard-active');
+                loaderText.textContent = 'Menyinkronkan pengaturan dari server...';
+                await fetchAppSettings(); // Pindahkan ke sini agar berjalan untuk semua role
 
                 const loginPage = document.getElementById('login-page');
                 if (loginPage) {
