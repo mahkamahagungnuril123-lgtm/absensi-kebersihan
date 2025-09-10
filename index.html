@@ -383,34 +383,29 @@
 
         /* --- RESPONSIVE DESIGN --- */
         @media (max-width: 1024px) {
-            .login-card .logo-img,
-            #supervisor-sidebar .logo-img,
-            #mobile-header .logo-img,
-            #supervisor-content .logo-img {
-                display: none !important;
-            }
+    /* Aturan untuk .logo-img sudah dihapus dari sini */
 
-            #supervisor-sidebar {
-                position: fixed; left: 0; top: 0; height: 100%;
-                transform: translateX(-100%);
-            }
-            #supervisor-sidebar.open {
-                transform: translateX(0);
-                box-shadow: 10px 0 25px rgba(0,0,0,0.3);
-            }
-            #supervisor-content { padding: 1rem; }
-            #mobile-header {
-                display: flex; align-items: center; justify-content: space-between;
-                padding: 1rem; background: rgba(22, 27, 34, 0.7);
-                backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-primary);
-                position: sticky; top: 0; z-index: 30;
-            }
-            #sidebar-overlay {
-                position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 39;
-                opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
-            }
-            #sidebar-overlay.visible { opacity: 1; pointer-events: auto; }
-        }
+    #supervisor-sidebar {
+        position: fixed; left: 0; top: 0; height: 100%;
+        transform: translateX(-100%);
+    }
+    #supervisor-sidebar.open {
+        transform: translateX(0);
+        box-shadow: 10px 0 25px rgba(0,0,0,0.3);
+    }
+    #supervisor-content { padding: 1rem; }
+    #mobile-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 1rem; background: rgba(22, 27, 34, 0.7);
+        backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-primary);
+        position: sticky; top: 0; z-index: 30;
+    }
+    #sidebar-overlay {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 39;
+        opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+    }
+    #sidebar-overlay.visible { opacity: 1; pointer-events: auto; }
+}
         @media (max-width: 640px) {
             .login-card {
                 padding: 1.5rem 1rem !important; border: none !important; border-radius: 0 !important;
@@ -882,47 +877,30 @@
             console.error(`View dengan ID "${viewId}" tidak ditemukan.`);
         }
     }
+    // --- ================================== ---
+// ---       INSIALISASI APLIKASI         ---
+// --- ================================== ---
+
+    // ... (fungsi initParticleAnimation dan showView yang sudah ada) ...
+
+
+    // KODE BARU DIMULAI DARI SINI:
+
+    // BARU: Variabel penanda status model AI
+    let faceApiModelsLoaded = false;
 
     /**
-     * Titik masuk utama aplikasi setelah DOM siap.
-     * PERBAIKAN: Logika diubah untuk mempercepat waktu login.
+     * BARU: Fungsi terpisah untuk memuat model AI yang berat.
+     * Fungsi ini hanya akan dipanggil saat dibutuhkan (di halaman absensi).
      */
-    document.addEventListener('DOMContentLoaded', async () => {
-        console.log("DOM Content Loaded. Memulai inisialisasi aplikasi.");
-        const initialLoader = document.getElementById('initial-loader');
-        const loaderText = initialLoader.querySelector('p');
-        const appContainer = document.getElementById('app-container');
-
-        const loggedInUser = sessionStorage.getItem('absenUser');
-        const userRole = sessionStorage.getItem('absenRole');
-
-        initParticleAnimation();
-
-        // --- TAHAP 1: Ambil data penting dan tampilkan UI secepat mungkin ---
-        loaderText.textContent = 'Menyinkronkan pengaturan...';
-        await fetchAppSettings();
-
-        if (!loggedInUser) {
-            // Jika belum login, langsung tampilkan halaman login.
-            document.body.classList.remove('dashboard-active');
-            const employeeList = getEmployeeList();
-            renderLoginPage(employeeList);
-            initialLoader.style.opacity = '0';
-            setTimeout(() => {
-                initialLoader.style.display = 'none';
-                if (appContainer) {
-                    appContainer.style.visibility = 'visible';
-                    appContainer.style.opacity = '1';
-                }
-            }, 500);
-        } else {
-            // Jika sudah login, dashboard akan ditampilkan setelah model AI dimuat.
-            document.body.classList.add('dashboard-active');
-            const loginPage = document.getElementById('login-page');
-            if (loginPage) loginPage.remove();
+    async function loadFaceApiModels() {
+        // Jika sudah dimuat, jangan jalankan lagi
+        if (faceApiModelsLoaded) {
+            console.log("Model AI sudah dimuat sebelumnya.");
+            return true;
         }
 
-        // --- TAHAP 2: Muat model AI yang berat di latar belakang ---
+        console.log("Memulai pemuatan model AI...");
         const modelsToLoad = [
             { name: 'Detektor Wajah', task: faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL) },
             { name: 'Penanda Wajah', task: faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL) },
@@ -930,63 +908,143 @@
             { name: 'Model SSD Mobilenet', task: faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL) }
         ];
 
-        const loadModels = async () => {
-            for (let i = 0; i < modelsToLoad.length; i++) {
-                if (loggedInUser) { // Hanya update loader text jika sedang menunggu dashboard
-                    loaderText.textContent = `Memuat model AI (${i + 1}/${modelsToLoad.length}): ${modelsToLoad[i].name}...`;
-                }
-                await modelsToLoad[i].task;
-            }
-        };
-
-        const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('Waktu memuat model habis (>30 dtk). Periksa koneksi internet Anda.')), 30000);
-        });
-
-        // --- TAHAP 3: Tampilkan dashboard (jika sudah login) setelah model siap ---
-        const renderDashboardIfNeeded = () => {
-            if (loggedInUser) {
-                if (userRole === "Pengawas") {
-                    renderSupervisorPage();
-                } else if (userRole === "Pengunjung") {
-                    renderVisitorPage();
-                } else {
-                    renderAttendancePage(loggedInUser);
-                }
-                
-                initialLoader.style.opacity = '0';
-                 setTimeout(() => {
-                    initialLoader.style.display = 'none';
-                     if (appContainer) {
-                        appContainer.style.visibility = 'visible';
-                        appContainer.style.opacity = '1';
-                    }
-                }, 500);
-            }
-        };
-
         try {
-            await Promise.race([loadModels(), timeoutPromise]);
-            console.log("Semua model face-api berhasil dimuat.");
-            renderDashboardIfNeeded();
+            // Kita beri batas waktu 30 detik untuk memuat model
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Waktu memuat model habis (>30 dtk). Periksa koneksi internet Anda.')), 30000);
+            });
 
+            const loadingPromises = modelsToLoad.map(model => model.task);
+            await Promise.race([Promise.all(loadingPromises), timeoutPromise]);
+
+            console.log("Semua model face-api berhasil dimuat.");
+            faceApiModelsLoaded = true; // Set penanda menjadi true
+            window.faceApiFailed = false; // Pastikan status kegagalan direset
+            return true;
         } catch (e) {
             console.error("Gagal memuat model face-api:", e);
             window.faceApiFailed = true; // Tandai bahwa API gagal
-            
-            if (loggedInUser) { // Jika sudah login tapi model gagal, tampilkan dashboard dengan peringatan
-                alert("Gagal memuat komponen AI. Fitur validasi wajah otomatis akan dinonaktifkan.");
-                renderDashboardIfNeeded();
-            } else { // Jika di halaman login, tampilkan tombol untuk lanjut
-                 initialLoader.innerHTML = `
-                    <div class="p-4 text-center">
-                        <h3 class="text-xl font-bold text-danger-color mb-3">Gagal Memuat Komponen AI</h3>
-                        <p class="text-text-secondary mb-4">Tidak dapat mengunduh model deteksi wajah. Ini biasanya disebabkan oleh koneksi internet yang lambat atau terputus.</p>
-                        <p class="text-text-secondary mb-4">Anda tetap bisa melanjutkan tanpa fitur validasi wajah otomatis.</p>
-                    </div>`;
-                // Tombol tidak diperlukan karena login page sudah terlihat di belakang loader
-            }
+            alert("Gagal memuat komponen AI. Fitur validasi wajah otomatis akan dinonaktifkan di halaman absensi.");
+            return false;
         }
+    }
+
+    /**
+     * Titik masuk utama aplikasi setelah DOM siap.
+     * Logika diubah untuk mempercepat waktu tampil.
+     */
+    document.addEventListener('DOMContentLoaded', async () => {
+        console.log("DOM Content Loaded. Memulai inisialisasi aplikasi.");
+        const initialLoader = document.getElementById('initial-loader');
+        const loaderText = initialLoader.querySelector('p');
+        const appContainer = document.getElementById('app-container');
+
+        initParticleAnimation();
+
+        // --- TAHAP 1: Ambil data penting dan tampilkan UI secepat mungkin ---
+        loaderText.textContent = 'Menyinkronkan pengaturan...';
+        await fetchAppSettings(); // Ambil pengaturan dasar
+
+        const loggedInUser = sessionStorage.getItem('absenUser');
+        const userRole = sessionStorage.getItem('absenRole');
+
+        // --- TAHAP 2: Tampilkan halaman yang sesuai TANPA menunggu model AI ---
+        if (loggedInUser) {
+            // Jika sudah login, langsung tampilkan dashboard
+            document.body.classList.add('dashboard-active');
+            const loginPage = document.getElementById('login-page');
+            if (loginPage) loginPage.remove(); // Hapus halaman login dari DOM
+
+            if (userRole === "Pengawas") {
+                renderSupervisorPage();
+            } else if (userRole === "Pengunjung") {
+                renderVisitorPage();
+            } else {
+                renderAttendancePage(loggedInUser);
+                // PENTING: Panggil pemuatan model AI di sini, hanya untuk halaman absensi.
+                // Fungsi ini berjalan di latar belakang setelah UI ditampilkan.
+                loadFaceApiModels(); 
+            }
+
+        } else {
+            // Jika belum login, tampilkan halaman login
+            document.body.classList.remove('dashboard-active');
+            const employeeList = getEmployeeList();
+            renderLoginPage(employeeList);
+        }
+
+        // --- TAHAP 3: Sembunyikan loader awal karena UI sudah siap ---
+        initialLoader.style.opacity = '0';
+        setTimeout(() => {
+            initialLoader.style.display = 'none';
+            if (appContainer) {
+                appContainer.style.visibility = 'visible';
+                appContainer.style.opacity = '1';
+            }
+        }, 500); // Tunggu 0.5 detik untuk transisi fade-out
+
+        // CATATAN: Pemuatan model AI yang berat sudah dipindahkan dari sini.
+    });
+
+    /**
+     * Titik masuk utama aplikasi setelah DOM siap.
+     * PERBAIKAN: Logika diubah untuk mempercepat waktu login.
+     */
+    /**
+     * Titik masuk utama aplikasi setelah DOM siap.
+     * Logika diubah untuk mempercepat waktu tampil.
+     */
+    document.addEventListener('DOMContentLoaded', async () => {
+        console.log("DOM Content Loaded. Memulai inisialisasi aplikasi.");
+        const initialLoader = document.getElementById('initial-loader');
+        const loaderText = initialLoader.querySelector('p');
+        const appContainer = document.getElementById('app-container');
+
+        initParticleAnimation();
+
+        // --- TAHAP 1: Ambil data penting dan tampilkan UI secepat mungkin ---
+        loaderText.textContent = 'Menyinkronkan pengaturan...';
+        await fetchAppSettings(); // Ambil pengaturan dasar
+
+        const loggedInUser = sessionStorage.getItem('absenUser');
+        const userRole = sessionStorage.getItem('absenRole');
+
+        // --- TAHAP 2: Tampilkan halaman yang sesuai TANPA menunggu model AI ---
+        if (loggedInUser) {
+            // Jika sudah login, langsung tampilkan dashboard
+            document.body.classList.add('dashboard-active');
+            const loginPage = document.getElementById('login-page');
+            if (loginPage) loginPage.remove(); // Hapus halaman login dari DOM
+
+            if (userRole === "Pengawas") {
+                renderSupervisorPage();
+            } else if (userRole === "Pengunjung") {
+                renderVisitorPage();
+            } else {
+                renderAttendancePage(loggedInUser);
+                // PENTING: Panggil pemuatan model AI di sini, hanya untuk halaman absensi.
+                // Fungsi ini berjalan di latar belakang setelah UI ditampilkan.
+                loadFaceApiModels(); 
+            }
+
+        } else {
+            // Jika belum login, tampilkan halaman login
+            document.body.classList.remove('dashboard-active');
+            const employeeList = getEmployeeList();
+            renderLoginPage(employeeList);
+        }
+
+        // --- TAHAP 3: Sembunyikan loader awal karena UI sudah siap ---
+        initialLoader.style.opacity = '0';
+        setTimeout(() => {
+            initialLoader.style.display = 'none';
+            if (appContainer) {
+                appContainer.style.visibility = 'visible';
+                appContainer.style.opacity = '1';
+            }
+        }, 500); // Tunggu 0.5 detik untuk transisi fade-out
+
+        // CATATAN: Pemuatan model AI yang berat sudah dipindahkan dari sini.
     });
 
     /**
@@ -1812,20 +1870,29 @@
     }
     
     // --- PENINGKATAN: Fungsi baru untuk memulai deteksi wajah agar bisa dipanggil ulang.
+    // PERBAIKAN PADA FUNGSI startFaceDetection
+    // Pastikan fungsi ini menunggu model AI selesai dimuat sebelum berjalan.
     function startFaceDetection() {
         const video = document.getElementById('video');
         const snapButton = document.getElementById('snap-button');
         const faceStatusDiv = document.getElementById('face-status');
         
-        // Hentikan interval lama jika ada
         if (detectionInterval) {
             clearInterval(detectionInterval);
         }
         
-        // Jangan jalankan jika video tidak ada
         if (!video || !snapButton || !faceStatusDiv) return;
 
-        // Jangan jalankan jika face-api gagal dimuat
+        // Cek jika model AI sedang dimuat atau gagal
+        if (!faceApiModelsLoaded) {
+            faceStatusDiv.innerHTML = "Sedang memuat model AI, harap tunggu...";
+            faceStatusDiv.className = `status-badge info`;
+
+            // Coba lagi setelah beberapa saat
+            setTimeout(startFaceDetection, 1500);
+            return;
+        }
+
         if (window.faceApiFailed === true) {
             snapButton.disabled = false;
             faceStatusDiv.innerHTML = "⚠️ Deteksi wajah gagal dimuat. Mode manual.";
@@ -1835,7 +1902,7 @@
 
         detectionInterval = setInterval(async () => {
             const isPhotoTaken = !!document.getElementById('photo-data').value;
-            if (isPhotoTaken) return; // Jangan deteksi jika foto sudah diambil
+            if (isPhotoTaken) return; 
             
             if (typeof faceapi === 'undefined') {
                 snapButton.disabled = false;
@@ -1850,7 +1917,7 @@
             snapButton.disabled = detections.length === 0;
             faceStatusDiv.innerHTML = detections.length > 0 ? "✅ Wajah terdeteksi, siap mengambil foto." : "❌ Tidak ada wajah terdeteksi.";
             faceStatusDiv.className = `status-badge ${detections.length > 0 ? 'success' : 'danger'}`;
-        }, 800); // Interval sedikit diperlambat untuk performa
+        }, 800);
     }
     /**
      * Menjalankan semua skrip yang diperlukan untuk halaman absensi pegawai.
