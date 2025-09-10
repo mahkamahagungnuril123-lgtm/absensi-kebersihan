@@ -641,15 +641,24 @@
                 payload[key] = typeof value === 'object' ? JSON.stringify(value) : value;
             }
 
+            // PERBAIKAN: Kirim sebagai request standar (bukan FormData) agar sesuai dengan Apps Script
             const response = await fetch(`${SPREADSHEET_URL}?action=saveSettings`, {
                 method: 'POST',
-                mode: 'no-cors', // Diperlukan untuk tipe redirect dari Apps Script
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                // HAPUS BARIS 'mode: 'no-cors',' DARI SINI
+                headers: {
+                    'Content-Type': 'text/plain;charset=utf-8', // Gunakan text/plain untuk menghindari preflight CORS
+                },
+                body: JSON.stringify(payload) // Body tetap string JSON
             });
-            
-            console.log("Pengaturan berhasil dikirim ke server.");
-            return true;
+
+            // Karena tidak lagi no-cors, kita bisa cek responsnya
+            const result = await response.json();
+            if (result.result === 'success') {
+                console.log("Pengaturan berhasil disimpan di server.");
+                return true;
+            } else {
+                throw new Error(result.error || "Gagal menyimpan di server.");
+            }
         } catch (error) {
             console.error("Gagal menyimpan pengaturan ke sheet:", error);
             alert("Gagal menyimpan pengaturan ke server. Perubahan hanya tersimpan di perangkat ini. Periksa koneksi internet Anda.");
