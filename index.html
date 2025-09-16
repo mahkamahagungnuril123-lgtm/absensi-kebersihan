@@ -2127,9 +2127,9 @@
             const timezoneOffset = now.getTimezoneOffset() * 60000;
             const localISOTime = new Date(now - timezoneOffset).toISOString(); // Dibuat lebih presisi dengan milidetik
 
-// BUAT ID YANG DIJAMIN UNIK dengan menambahkan angka acak di akhir
-const uniqueId = `${localISOTime}-${Math.random().toString(36).substring(2, 9)}`;
-formData.set('timestamp', uniqueId); // Kirim ID unik ini sebagai timestamp
+            // BUAT ID YANG DIJAMIN UNIK dengan menambahkan angka acak di akhir
+            // Menggunakan timestamp ISO standar yang sudah unik dan valid
+            formData.set('timestamp', localISOTime);
             const tanggalInput = document.getElementById('tanggal').value;
             const waktuInput = document.getElementById('waktu').value;
             if (!tanggalInput || !waktuInput) {
