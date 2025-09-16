@@ -2280,8 +2280,8 @@
             
             const now = new Date();
             const localISOTime = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString();
-            const uniqueId = `${localISOTime}-${Math.random().toString(36).substring(2, 9)}`;
-            formData.set('timestamp', uniqueId);
+            // Langsung set 'timestamp' dengan format ISO yang benar
+            formData.set('timestamp', localISOTime);
 
             const tanggalInput = document.getElementById('tanggal').value;
             const waktuInput = document.getElementById('waktu').value;
