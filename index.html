@@ -947,7 +947,6 @@
 
         const loggedInUser = sessionStorage.getItem('absenUser');
         const userRole = sessionStorage.getItem('absenRole');
-
         // --- TAHAP 2: Tampilkan halaman yang sesuai TANPA menunggu model AI ---
         if (loggedInUser) {
             // Jika sudah login, langsung tampilkan dashboard
@@ -2438,6 +2437,46 @@ formData.set('timestamp', uniqueId); // Kirim ID unik ini sebagai timestamp
         return new Date(dateObj).toLocaleDateString('id-ID', options);
     }
     
+    /**
+     * Parses a timestamp string in "DD/MM/YYYY HH:mm:ss" format into a valid Date object.
+     * @param {string} timestampStr - The timestamp string from the spreadsheet.
+     * @returns {Date|null} A valid Date object or null if parsing fails.
+     */
+    function parseCustomTimestamp(timestampStr) {
+        if (!timestampStr || typeof timestampStr !== 'string') {
+            return null;
+        }
+
+        // Coba parsing format "DD/MM/YYYY HH:mm:ss"
+        const parts = timestampStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s(\d{1,2}):(\d{1,2}):(\d{1,2})$/);
+        
+        if (parts) {
+            // parts[0] is the full match, then day, month, year, etc.
+            const day = parseInt(parts[1], 10);
+            const month = parseInt(parts[2], 10) - 1; // JS months are 0-indexed
+            const year = parseInt(parts[3], 10);
+            const hour = parseInt(parts[4], 10);
+            const minute = parseInt(parts[5], 10);
+            const second = parseInt(parts[6], 10);
+            
+            const date = new Date(year, month, day, hour, minute, second);
+            
+            // Verifikasi bahwa tanggal yang dibuat valid (misalnya, tidak ada 30 Februari)
+            if (date.getFullYear() === year && date.getMonth() === month && date.getDate() === day) {
+                return date;
+            }
+        }
+        
+        // Fallback untuk format ISO (YYYY-MM-DDTHH:mm:ss.sssZ) atau format lain yang dikenali `new Date()`
+        const fallbackDate = new Date(timestampStr);
+        if (!isNaN(fallbackDate.getTime())) {
+            return fallbackDate;
+        }
+
+        console.warn(`Gagal mem-parsing timestamp: "${timestampStr}"`);
+        return null; // Return null jika semua metode parsing gagal
+    }
+
     async function fetchAttendanceData(isReadOnly = false) {
         const container = document.getElementById('attendance-records-container');
         if (!container) return;
@@ -2465,13 +2504,17 @@ formData.set('timestamp', uniqueId); // Kirim ID unik ini sebagai timestamp
                 throw new Error("Format data yang diterima dari server tidak valid (bukan array).");
             }
             
+            // --- PERBAIKAN UTAMA ADA DI SINI ---
             fullAttendanceData = responseData.map(row => {
-                const parsedDate = new Date(row.timestamp);
+                // Menggunakan fungsi parsing baru yang lebih andal
+                const parsedDate = parseCustomTimestamp(row.timestamp); 
                 return {
                     ...row,
-                    parsedDate: !isNaN(parsedDate.getTime()) ? parsedDate : null
+                    // Tetap menyimpan hasil parse, yang akan null jika gagal
+                    parsedDate: parsedDate 
                 };
             }).sort((a, b) => {
+                // Mengurutkan dari yang terbaru ke terlama
                 const dateA = a.parsedDate ? a.parsedDate.getTime() : 0;
                 const dateB = b.parsedDate ? b.parsedDate.getTime() : 0;
                 return dateB - dateA;
@@ -2522,7 +2565,7 @@ formData.set('timestamp', uniqueId); // Kirim ID unik ini sebagai timestamp
                     ${data.map(row => {
                         const formattedDate = row.tanggal || (row.parsedDate ? formatDateForDisplay(row.parsedDate) : 'N/A');
                         const formattedTime = row.waktu || (row.parsedDate ? row.parsedDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }) + ' WIB' : '');
-                        const gpsLink = row.gps ? `https://www.google.com/maps?q=${row.gps}` : '#';
+                        const gpsLink = row.gps ? `http://www.google.com/maps/place/${row.gps}` : '#';
                         
                         return `
                         <tr data-timestamp="${row.timestamp || ''}">
