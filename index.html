@@ -35,7 +35,6 @@
             height: 100%;
             margin: 0;
             padding: 0;
-            /* overflow-x: hidden; -- INILAH PENYEBAB MASALAH, SUDAH SAYA HAPUS */
         }
 
         body {
@@ -203,7 +202,7 @@
         .btn.icon-only svg { margin-right: 0; }
         .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,0,0,0.2); filter: brightness(1.15); }
         .btn:active { transform: translateY(0px); filter: brightness(1); }
-        .btn-primary {   background-color: rgba(88, 166, 255, 0.1); border: 1px solid rgba(88, 166, 255, 0.5);color: rgba(255, 255, 255, 0.7); opacity: 1; /* Menghapus efek transparan */}
+        .btn-primary {   background-color: rgba(88, 166, 255, 0.1); border: 1px solid rgba(88, 166, 255, 0.5);color: rgba(255, 255, 255, 0.7); opacity: 1; }
         .btn-secondary { background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-primary); }
         .btn-danger { background-color: var(--danger-color); color: white; }
         .btn-info { background-image: linear-gradient(to right, #03a9f4 0%, #0288d1 100%); color: white; }
@@ -383,29 +382,27 @@
 
         /* --- RESPONSIVE DESIGN --- */
         @media (max-width: 1024px) {
-    /* Aturan untuk .logo-img sudah dihapus dari sini */
-
-    #supervisor-sidebar {
-        position: fixed; left: 0; top: 0; height: 100%;
-        transform: translateX(-100%);
-    }
-    #supervisor-sidebar.open {
-        transform: translateX(0);
-        box-shadow: 10px 0 25px rgba(0,0,0,0.3);
-    }
-    #supervisor-content { padding: 1rem; }
-    #mobile-header {
-        display: flex; align-items: center; justify-content: space-between;
-        padding: 1rem; background: rgba(22, 27, 34, 0.7);
-        backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-primary);
-        position: sticky; top: 0; z-index: 30;
-    }
-    #sidebar-overlay {
-        position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 39;
-        opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
-    }
-    #sidebar-overlay.visible { opacity: 1; pointer-events: auto; }
-}
+            #supervisor-sidebar {
+                position: fixed; left: 0; top: 0; height: 100%;
+                transform: translateX(-100%);
+            }
+            #supervisor-sidebar.open {
+                transform: translateX(0);
+                box-shadow: 10px 0 25px rgba(0,0,0,0.3);
+            }
+            #supervisor-content { padding: 1rem; }
+            #mobile-header {
+                display: flex; align-items: center; justify-content: space-between;
+                padding: 1rem; background: rgba(22, 27, 34, 0.7);
+                backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-primary);
+                position: sticky; top: 0; z-index: 30;
+            }
+            #sidebar-overlay {
+                position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 39;
+                opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+            }
+            #sidebar-overlay.visible { opacity: 1; pointer-events: auto; }
+        }
         @media (max-width: 640px) {
             .login-card {
                 padding: 1.5rem 1rem !important; border: none !important; border-radius: 0 !important;
@@ -420,13 +417,12 @@
         .card-header h1 { color: white; }
         
         /* --- PERBAIKAN SCROLL --- */
-        /* PERBAIKAN UTAMA: Memastikan container tabel bisa di-scroll di mobile */
         #job-allocation-container,
         #progress-report-container {
              display: block; 
              overflow-x: auto; 
              -webkit-overflow-scrolling: touch;
-             max-width: 100%; /* Tambahan untuk robustnes di beberapa browser mobile */
+             max-width: 100%;
         }
         
         .job-table {
@@ -436,7 +432,7 @@
         .daily-recap-table {
             border-collapse: collapse; margin-top: 1rem;
             font-size: 0.8rem;
-            min-width: 1800px; /* Lebar minimum agar tabel tidak rusak & memicu scroll */
+            min-width: 1800px;
         }
 
         .daily-recap-table th, 
@@ -449,15 +445,15 @@
 
         .daily-recap-table thead th {
             background-color: var(--bg-tertiary); font-weight: 600;
-            position: sticky; /* Membuat header tetap terlihat saat scroll ke bawah */
+            position: sticky;
             top: 0;
             z-index: 10;
-            white-space: nowrap; /* Mencegah teks header terpotong */
+            white-space: nowrap;
         }
 
         .daily-recap-table tbody td:first-child {
             font-weight: 600; background-color: var(--bg-tertiary);
-            position: sticky; /* Membuat kolom nama pegawai tetap terlihat saat scroll ke samping */
+            position: sticky;
             left: 0;
             z-index: 5;
             width: 150px;
@@ -568,16 +564,14 @@
     const SPREADSHEET_URL = 'https://script.google.com/macros/s/AKfycbxDl1Q2cXAiWXougieh1VHJ2_z5HE5xB3-P-xegBF-K-nftqUWcvZOH8IMjfDN3PHkgrA/exec';
     const MODEL_URL = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights';
     
-    // Opsi untuk menonaktifkan partikel latar belakang jika dirasa berat
     const ENABLE_PARTICLES = true;
 
     // --- Variabel State Aplikasi ---
-    let stream = null; // Menyimpan stream kamera
-    let detectionInterval = null; // Menyimpan interval untuk deteksi wajah
-    let fullAttendanceData = []; // Cache untuk semua data absensi dari server
-    let editingState = {}; // Menyimpan state saat mengedit baris tabel
-    let roomChoicesInstance = null; // Instance untuk dropdown ruangan
-    // **BARU: Variabel untuk menyimpan semua pengaturan dari Google Sheet**
+    let stream = null;
+    let detectionInterval = null;
+    let fullAttendanceData = [];
+    let editingState = {};
+    let roomChoicesInstance = null;
     let appSettings = {}; 
 
 
@@ -585,10 +579,6 @@
     // ---   MANAJEMEN DATA (SHEET & LOCAL)   ---
     // --- ================================== ---
 
-    /**
-     * Mengambil semua pengaturan dari Google Sheet.
-     * Ini menjadi sumber data utama (source of truth) untuk Pengawas.
-     */
     async function fetchAppSettings() {
         console.log("Mengambil pengaturan dari Google Sheet...");
         try {
@@ -597,11 +587,8 @@
             const data = await response.json();
             if (data.result === 'success') {
                 appSettings = data.settings;
-                // Sinkronkan data dari sheet ke localStorage sebagai cache/fallback
                 for (const key in appSettings) {
                     try {
-                        // Coba parse, jika ini adalah JSON string (seperti daftar/objek)
-                        // PERBAIKAN: Tangani nilai yang sudah berupa objek/array dari Apps Script
                         const value = appSettings[key];
                         if (typeof value === 'object') {
                              localStorage.setItem(key, JSON.stringify(value));
@@ -610,42 +597,34 @@
                             localStorage.setItem(key, JSON.stringify(parsedValue));
                         }
                     } catch (e) {
-                        // Jika bukan JSON string (seperti password biasa), simpan langsung
                         localStorage.setItem(key, appSettings[key]);
                     }
                 }
                 console.log("Pengaturan berhasil diambil dan disinkronkan ke local storage.", appSettings);
                 return true;
             } else {
-                throw new Error(data.message || "Gagal mengambil pengaturan dari sheet.");
+                throw new Error(data.message || "Gagal mengambil pengaturan.");
             }
         } catch (error) {
             console.error("Gagal mengambil App Settings dari sheet:", error);
-            // Jika gagal, aplikasi akan otomatis menggunakan data dari localStorage
-            alert("Gagal mengambil pengaturan terbaru dari server. Aplikasi akan berjalan menggunakan data terakhir yang tersimpan di perangkat ini. Beberapa data mungkin tidak update.");
+            alert("Gagal mengambil pengaturan terbaru dari server. Aplikasi akan berjalan menggunakan data terakhir yang tersimpan. Beberapa data mungkin tidak update.");
             return false;
         }
     }
     
-    /**
-     * Menyimpan satu atau lebih pengaturan ke Google Sheet.
-     * @param {object} settingsToSave - Objek berisi key-value yang ingin disimpan. Cth: { employeeList: [...] }
-     */
     async function saveAppSettings(settingsToSave) {
         console.log("Menyimpan pengaturan ke Google Sheet:", settingsToSave);
         try {
             const payload = {};
             for (const key in settingsToSave) {
                 const value = settingsToSave[key];
-                // Pastikan objek atau array di-stringify sebelum dikirim
                 payload[key] = typeof value === 'object' ? JSON.stringify(value) : value;
             }
 
-            // Kirim sebagai request standar agar sesuai dengan Apps Script
             const response = await fetch(`${SPREADSHEET_URL}?action=saveSettings`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'text/plain;charset=utf-8', // Gunakan text/plain untuk menghindari preflight CORS
+                    'Content-Type': 'text/plain;charset=utf-8',
                 },
                 body: JSON.stringify(payload) 
             });
@@ -664,17 +643,10 @@
         }
     }
     
-    /**
-     * Membaca data dari cache (localStorage).
-     * @param {string} key - Kunci di localStorage
-     * @param {any} defaultData - Nilai default jika data tidak ada/rusak
-     * @returns {any} Data yang sudah di-parse
-     */
     function getDataFromCache(key, defaultData) {
         const storedData = localStorage.getItem(key);
         if (storedData) {
             try {
-                // Khusus untuk kredensial, jangan di-parse jika bukan JSON
                 if (key.toLowerCase().includes('password') && !storedData.startsWith('{')) {
                     return storedData;
                 }
@@ -688,13 +660,8 @@
         return defaultData;
     }
 
-    /**
-     * Helper untuk menyimpan data ke cache (localStorage) dan ke Sheet.
-     */
     async function updateAndSaveData(key, newData) {
-        // 1. Simpan ke cache lokal terlebih dahulu untuk responsivitas
         localStorage.setItem(key, JSON.stringify(newData));
-        // 2. Kirim pembaruan ke Google Sheet
         await saveAppSettings({ [key]: newData });
     }
 
@@ -753,23 +720,15 @@
     ];
     const defaultOfficeCenter = { lat: 4.72728, lon: 96.83355 };
 
-    /**
-     * PERBAIKAN: Fungsi getActivePolygon sekarang mengambil dari appSettings (sheet) dulu,
-     * baru fallback ke localStorage, lalu ke default. Ini memastikan data persisten.
-     */
     const getActivePolygon = () => {
-        // Prioritas 1: Dari appSettings yang baru di-fetch dari sheet
         if (appSettings && appSettings.activeGpsCoords) {
             try {
-                 // Cek jika nilainya string JSON, parse dulu
                 if (typeof appSettings.activeGpsCoords === 'string') {
                     return JSON.parse(appSettings.activeGpsCoords);
                 }
-                // Jika sudah objek/array, langsung kembalikan
                 return appSettings.activeGpsCoords;
             } catch(e) { console.error("Gagal parse activeGpsCoords dari appSettings"); }
         }
-        // Prioritas 2: Dari cache local storage
         return getDataFromCache('activeGpsCoords', defaultOfficePolygon);
     };
 
@@ -782,7 +741,7 @@
         const existingPresetIndex = presets.findIndex(p => p.name.trim().toLowerCase() === name.trim().toLowerCase());
 
         if (existingPresetIndex !== -1) {
-             if(confirm(`Preset dengan nama "${name.trim()}" sudah ada. Apakah Anda ingin menimpanya dengan koordinat saat ini?`)){
+             if(confirm(`Preset dengan nama "${name.trim()}" sudah ada. Apakah Anda ingin menimpanya?`)){
                 presets[existingPresetIndex].coords = coords;
              } else {
                 return false;
@@ -824,13 +783,10 @@
 // ---       INSIALISASI APLIKASI         ---
 // --- ================================== ---
 
-    /**
-     * Membuat animasi partikel di latar belakang.
-     */
     function initParticleAnimation() {
         if (!ENABLE_PARTICLES) return;
         const wrapper = document.getElementById('animation-wrapper');
-        if (!wrapper || wrapper.children.length > 0) return; // Mencegah duplikasi partikel
+        if (!wrapper || wrapper.children.length > 0) return;
         const particleCount = 20;
         for (let i = 0; i < particleCount; i++) {
             const particle = document.createElement('div');
@@ -848,9 +804,6 @@
         }
     }
     
-    /**
-     * Menampilkan view (halaman) tertentu dan menyembunyikan yang lain.
-     */
     function showView(viewId) {
         console.log(`Mencoba menampilkan view: ${viewId}`);
         document.querySelectorAll('.main-view').forEach(view => {
@@ -858,7 +811,6 @@
                 if (stream) {
                     stream.getTracks().forEach(track => track.stop());
                     stream = null;
-                    console.log("Stream kamera dihentikan.");
                 }
                 if (detectionInterval) {
                     clearInterval(detectionInterval);
@@ -872,67 +824,36 @@
         if (targetView) {
             targetView.style.display = 'flex'; 
             targetView.classList.add('fade-in');
-            console.log(`Berhasil menampilkan view: ${viewId}`);
         } else {
             console.error(`View dengan ID "${viewId}" tidak ditemukan.`);
         }
     }
-    // --- ================================== ---
-// ---       INSIALISASI APLIKASI         ---
-// --- ================================== ---
 
-    // ... (fungsi initParticleAnimation dan showView yang sudah ada) ...
-
-
-    // KODE BARU DIMULAI DARI SINI:
-
-    // BARU: Variabel penanda status model AI
     let faceApiModelsLoaded = false;
 
-    /**
-     * BARU: Fungsi terpisah untuk memuat model AI yang berat.
-     * Fungsi ini hanya akan dipanggil saat dibutuhkan (di halaman absensi).
-     */
     async function loadFaceApiModels() {
-        // Jika sudah dimuat, jangan jalankan lagi
         if (faceApiModelsLoaded) {
-            console.log("Model AI sudah dimuat sebelumnya.");
             return true;
         }
 
         console.log("Memulai pemuatan model AI...");
-        const modelsToLoad = [
-            { name: 'Detektor Wajah', task: faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL) },
-            { name: 'Penanda Wajah', task: faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL) },
-            { name: 'Pengenalan Wajah', task: faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL) },
-            { name: 'Model SSD Mobilenet', task: faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL) }
-        ];
-
         try {
-            // Kita beri batas waktu 30 detik untuk memuat model
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('Waktu memuat model habis (>30 dtk). Periksa koneksi internet Anda.')), 30000);
-            });
-
-            const loadingPromises = modelsToLoad.map(model => model.task);
-            await Promise.race([Promise.all(loadingPromises), timeoutPromise]);
-
+            await Promise.all([
+                faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+                faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+                faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+                faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL)
+            ]);
             console.log("Semua model face-api berhasil dimuat.");
-            faceApiModelsLoaded = true; // Set penanda menjadi true
-            window.faceApiFailed = false; // Pastikan status kegagalan direset
+            faceApiModelsLoaded = true;
             return true;
         } catch (e) {
             console.error("Gagal memuat model face-api:", e);
-            window.faceApiFailed = true; // Tandai bahwa API gagal
-            alert("Gagal memuat komponen AI. Fitur validasi wajah otomatis akan dinonaktifkan di halaman absensi.");
+            alert("Gagal memuat komponen AI. Fitur validasi wajah otomatis akan dinonaktifkan.");
             return false;
         }
     }
 
-    /**
-     * Titik masuk utama aplikasi setelah DOM siap.
-     * Logika diubah untuk mempercepat waktu tampil.
-     */
     document.addEventListener('DOMContentLoaded', async () => {
         console.log("DOM Content Loaded. Memulai inisialisasi aplikasi.");
         const initialLoader = document.getElementById('initial-loader');
@@ -941,18 +862,16 @@
 
         initParticleAnimation();
 
-        // --- TAHAP 1: Ambil data penting dan tampilkan UI secepat mungkin ---
         loaderText.textContent = 'Menyinkronkan pengaturan...';
-        await fetchAppSettings(); // Ambil pengaturan dasar
+        await fetchAppSettings();
 
         const loggedInUser = sessionStorage.getItem('absenUser');
         const userRole = sessionStorage.getItem('absenRole');
-        // --- TAHAP 2: Tampilkan halaman yang sesuai TANPA menunggu model AI ---
+
         if (loggedInUser) {
-            // Jika sudah login, langsung tampilkan dashboard
             document.body.classList.add('dashboard-active');
             const loginPage = document.getElementById('login-page');
-            if (loginPage) loginPage.remove(); // Hapus halaman login dari DOM
+            if (loginPage) loginPage.remove();
 
             if (userRole === "Pengawas") {
                 renderSupervisorPage();
@@ -960,19 +879,15 @@
                 renderVisitorPage();
             } else {
                 renderAttendancePage(loggedInUser);
-                // PENTING: Panggil pemuatan model AI di sini, hanya untuk halaman absensi.
-                // Fungsi ini berjalan di latar belakang setelah UI ditampilkan.
                 loadFaceApiModels(); 
             }
 
         } else {
-            // Jika belum login, tampilkan halaman login
             document.body.classList.remove('dashboard-active');
             const employeeList = getEmployeeList();
             renderLoginPage(employeeList);
         }
 
-        // --- TAHAP 3: Sembunyikan loader awal karena UI sudah siap ---
         initialLoader.style.opacity = '0';
         setTimeout(() => {
             initialLoader.style.display = 'none';
@@ -980,19 +895,321 @@
                 appContainer.style.visibility = 'visible';
                 appContainer.style.opacity = '1';
             }
-        }, 500); // Tunggu 0.5 detik untuk transisi fade-out
-
-        // CATATAN: Pemuatan model AI yang berat sudah dipindahkan dari sini.
+        }, 500);
     });
 
-    /**
-     * Titik masuk utama aplikasi setelah DOM siap.
-     * PERBAIKAN: Logika diubah untuk mempercepat waktu login.
-     */
-    /**
-     * Titik masuk utama aplikasi setelah DOM siap.
-     * Logika diubah untuk mempercepat waktu tampil.
-     */
+    function renderAttendancePage(loggedInUser) {
+        const pageContainer = document.getElementById('attendance-page-wrapper');
+        pageContainer.innerHTML = `
+        <header class="sticky top-0 z-50 glass-card !rounded-none shadow-xl p-4 flex items-center justify-between transition-all duration-300">
+            <div class="flex items-center">
+                <img src="Logo MS Str.png" alt="Logo" class="logo-img w-12 h-12 mr-4">
+                <div><h1 class="text-xl font-bold text-text-primary">Absensi Kebersihan</h1><p class="text-sm text-text-secondary">Mahkamah Syar'iyah Simpang Tiga Redelong</p></div>
+            </div>
+            <button id="logout-btn-attendance" class="btn btn-danger !py-2 !px-4 text-sm">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                Logout
+            </button>
+        </header>
+        <main class="relative z-10 flex items-center justify-center p-4 py-12">
+            <div class="glass-card w-full max-w-3xl slide-in-up">
+                <div class="card-header text-center p-8"><h1 class="text-3xl md:text-4xl font-extrabold text-text-primary">Absensi Piket</h1><p class="text-md text-text-secondary mt-2">Pastikan semua data diisi dengan benar.</p></div>
+                <form id="attendance-form" class="p-8 space-y-8">
+                    <div class="form-section form-section-card" style="animation-delay: 100ms;">
+                        <h3 class="text-xl font-bold border-b-2 border-accent-primary pb-2 mb-4">Data Diri & Waktu</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="nama" class="block text-sm font-medium mb-2 text-text-secondary">Nama Lengkap</label>
+                                <input type="text" id="nama" name="nama" value="${loggedInUser}" readonly class="form-input w-full"/>
+                            </div>
+                            <div>
+                                <div class="flex justify-between items-center mb-2">
+                                    <label for="ruang" class="block text-sm font-medium text-text-secondary">Pilih Ruangan (Bisa lebih dari 1)</label>
+                                    <button type="button" id="fill-my-rooms-btn" class="btn btn-secondary !py-1 !px-2 text-xs">Isi Sesuai Tugas</button>
+                                </div>
+                                <select id="ruang" name="nama_ruang" multiple></select>
+                            </div>
+                            <div>
+                                <label for="tanggal" class="block text-sm font-medium mb-2 text-text-secondary">Tanggal</label>
+                                <input type="date" id="tanggal" name="tanggal" class="form-input w-full"/>
+                            </div>
+                            <div>
+                                <label for="waktu" class="block text-sm font-medium mb-2 text-text-secondary">Waktu</label>
+                                <input type="time" id="waktu" name="waktu" class="form-input w-full"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-section form-section-card" style="animation-delay: 200ms;"><h3 class="text-xl font-bold border-b-2 border-accent-primary pb-2 mb-4">Lokasi & Bukti Foto</h3><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><div class="p-4 rounded-xl"><label for="gps" class="block text-sm font-medium mb-2 text-text-secondary">Lokasi GPS</label><input type="text" id="gps" name="gps" readonly class="form-input w-full mb-2" /><div id="map" class="w-full h-48 rounded-lg shadow-inner mt-2 border border-border-primary"></div><div id="gps-status" class="status-badge text-center font-bold text-sm mt-2 transition-colors duration-300">Memeriksa lokasi...</div></div><div class="p-4 rounded-xl"><label class="block text-sm font-medium mb-2 text-text-secondary">Ambil Foto</label><div class="relative w-full aspect-video rounded-lg overflow-hidden bg-black shadow-inner border border-border-primary"><video id="video" autoplay playsinline class="w-full h-full object-cover transform scale-x-[-1]"></video><img id="photo-preview" class="hidden w-full h-full object-cover"/><div id="face-validation-overlay" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 text-white font-bold text-lg opacity-0 transition-opacity duration-300">Deteksi Wajah Gagal</div></div><canvas id="canvas" class="hidden"></canvas><input type="hidden" id="photo-data" name="foto"/><div class="flex flex-col gap-4 mt-3"><button type="button" id="snap-button" class="btn btn-primary !py-2 !px-4" disabled><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.89-1.78A2 2 0 0110.46 5H13.54a2 2 0 011.664.89l.89 1.78A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2-2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>Ambil Foto</button><button type="button" id="retake-button" class="btn btn-secondary !py-2 !px-4 flex-grow hidden"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.418 0h.582m-19 0a2 2 0 002 2h1.582m14.418 0a2 2 0 012-2h.582m0 0a2 2 0 012 2v11a2 2 0 01-2 2H2a2 2 0 01-2-2V7a2 2 0 012 2h2.582m14.418 0a2 2 0 002-2V3a2 2 0 00-2-2H2a2 2 0 00-2 2v2a2 2 0 002 2h2.582z"></path></svg>Ulangi</button><div id="face-status" class="status-badge text-center font-bold text-sm">Menunggu deteksi wajah...</div></div></div></div></div>
+                    <div class="form-section form-section-card" style="animation-delay: 300ms;"><h3 class="text-xl font-bold border-b-2 border-accent-primary pb-2 mb-4">Catatan & Aksi</h3><div><label for="catatan" class="block text-sm font-medium mb-2 text-text-secondary">Catatan (Opsional)</label><textarea id="catatan" name="catatan" rows="4" class="form-input w-full" placeholder="Ketik catatan tambahan jika ada..."></textarea></div>
+                    <div class="mt-6 text-center">
+                        <div id="time-window-status" class="status-badge info mx-auto !mb-4 hidden"></div>
+                        <button type="submit" id="submit-button" class="btn btn-primary w-full md:w-auto !py-3 !px-8 mx-auto" disabled>
+                            <span id="submit-btn-text">Kirim ke Pengawas</span>
+                            <div id="submit-loader" class="loader hidden"></div>
+                        </button>
+                        <div id="submit-status" class="text-warning-color text-sm mt-2 font-medium" style="color: var(--warning-color);"></div>
+                    </div>
+                </div>
+                </form>
+            </div>
+        </main>
+        <footer class="text-center text-text-secondary py-4 text-sm bg-black bg-opacity-30"><p class="font-bold">WAJIB DIISI DENGAN LENGKAP DAN JUJUR!</p><p>Mahkamah Syar'iyah Simpang Tiga Redelong</p></footer>
+        `;
+        showView('attendance-page-wrapper');
+        populateRoomOptions();
+        runAttendanceScript();
+    }
+    "Gagal mengambil pengaturan.");
+            }
+        } catch (error) {
+            console.error("Gagal mengambil App Settings dari sheet:", error);
+            alert("Gagal mengambil pengaturan terbaru dari server. Aplikasi akan berjalan menggunakan data terakhir yang tersimpan. Beberapa data mungkin tidak update.");
+            return false;
+        }
+    }
+    
+    async function saveAppSettings(settingsToSave) {
+        console.log("Menyimpan pengaturan ke Google Sheet:", settingsToSave);
+        try {
+            const payload = {};
+            for (const key in settingsToSave) {
+                const value = settingsToSave[key];
+                payload[key] = typeof value === 'object' ? JSON.stringify(value) : value;
+            }
+
+            const response = await fetch(`${SPREADSHEET_URL}?action=saveSettings`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'text/plain;charset=utf-8',
+                },
+                body: JSON.stringify(payload) 
+            });
+
+            const result = await response.json();
+            if (result.result === 'success') {
+                console.log("Pengaturan berhasil disimpan di server.");
+                return true;
+            } else {
+                throw new Error(result.error || "Gagal menyimpan di server.");
+            }
+        } catch (error) {
+            console.error("Gagal menyimpan pengaturan ke sheet:", error);
+            alert("Gagal menyimpan pengaturan ke server. Perubahan hanya tersimpan di perangkat ini. Periksa koneksi internet Anda.");
+            return false;
+        }
+    }
+    
+    function getDataFromCache(key, defaultData) {
+        const storedData = localStorage.getItem(key);
+        if (storedData) {
+            try {
+                if (key.toLowerCase().includes('password') && !storedData.startsWith('{')) {
+                    return storedData;
+                }
+                return JSON.parse(storedData);
+            } catch (e) {
+                localStorage.setItem(key, JSON.stringify(defaultData));
+                return defaultData;
+            }
+        }
+        localStorage.setItem(key, JSON.stringify(defaultData));
+        return defaultData;
+    }
+
+    async function updateAndSaveData(key, newData) {
+        localStorage.setItem(key, JSON.stringify(newData));
+        await saveAppSettings({ [key]: newData });
+    }
+
+    // --- Manajemen Kredensial (Password & Email) ---
+    function getCredentials() {
+        const defaults = {
+            pengawasPassword: "ADMIN", pegawaiPassword: "admin", pengunjungPassword: "admin",
+            recoveryEmails: ["mahkamahagungnuril123@gmail.com"],
+            passwordStates: { pengawas: true, pegawai: true, pengunjung: true }
+        };
+        const cached = getDataFromCache('loginCredentials', defaults);
+        return { ...defaults, ...cached };
+    }
+
+    async function saveCredentials(newCredentials) {
+        await updateAndSaveData('loginCredentials', newCredentials);
+    }
+
+    // --- Manajemen Pegawai ---
+    const getEmployeeList = () => getDataFromCache('employeeList', ["Suryadi", "Arif Munandar", "Para Pegawai Kesekretariatan", "Para Pegawai Kepaniteraan", "Firda Saputra", "Firda Saputra & Rusdi", "Arif Munandar & Suryadi", "Elfiana", "Pegawai Posyabakum", "Eko Setiawan", "Seri Wahyuni"]);
+    
+    async function addEmployee(name) {
+        if (!name || name.trim() === '') { alert('Nama pegawai tidak boleh kosong!'); return; }
+        const employeeList = getEmployeeList();
+        if (employeeList.map(e => e.toLowerCase()).includes(name.trim().toLowerCase())) { alert('Nama pegawai sudah ada!'); return; }
+        employeeList.push(name.trim());
+        await updateAndSaveData('employeeList', employeeList);
+    }
+    
+    async function removeEmployee(name) {
+        if (confirm(`Anda yakin ingin menghapus "${name}"?\n\nPERINGATAN: Ini juga akan menghapus semua data pembagian tugas yang terkait dengan nama ini.`)) {
+            let employeeList = getEmployeeList().filter(e => e !== name);
+            await updateAndSaveData('employeeList', employeeList);
+
+            let jobAllocations = getJobAllocations().filter(alloc => alloc.name !== name);
+            await saveJobAllocations(jobAllocations);
+            
+            if (document.getElementById('job-allocation-table')) {
+                renderJobAllocationTable();
+            }
+        }
+    }
+    
+    // --- Manajemen Ruangan ---
+    const getDefaultRoomData = () => ({
+        "Lantai 1": ["Halaman Depan & Front Desk", "Ruang Tunggu VIP", "Ruang Kesekretariatan", "Toilet Kesekretariatan", "Ruang Kepaniteraan", "Toilet Kepaniteraan", "Ruang Kasir", "Ruang PTSP Dalam", "Ruang Server", "Ruang PTSP Luar", "Ruang Posyabakum", "Ruang Jaksa/Pengacara", "Ruang Sidang Utama", "Ruang Sidang Utama Belakang", "Ruang Tahanan", "Toilet Tahanan", "Ruang Tunggu Sidang", "Ruang Sidang 1", "Ruang Mediasi", "Toilet Umum Laki-laki (Para Pihak)", "Toilet Umum Perempuan (Para Pihak)", "Tempat Bermain Anak"],
+        "Lantai 2": ["Ruang Ketua", "Toilet Ruang Ketua", "Ruang Tunggu Lantai 2 & Tangga", "Ruang Media Center", "Ruang Panitera", "Toilet Panitera", "Ruang Hakim", "Ruang Perpustakaan", "Gudang Kecil", "Ruang Aula & Tangga", "Ruang Wakil Ketua", "Toilet Wakil Ketua", "Ruang Bendahara", "Ruang Sekretaris", "Toilet Sekretaris", "Toilet Pria (Lantai 2)", "Toilet Wanita (Lantai 2)", "Balkon", "Pantri Coffe", "Arsip Dinamis", "Arsip Perkara"]
+    });
+    const getRoomData = () => getDataFromCache('roomData', getDefaultRoomData());
+    async function saveRoomData(newData) { await updateAndSaveData('roomData', newData); }
+
+    // --- Manajemen GPS ---
+    const defaultOfficePolygon = [
+        [4.727530, 96.833301], [4.727530, 96.833832],
+        [4.727048, 96.833832], [4.727048, 96.833301]
+    ];
+    const defaultOfficeCenter = { lat: 4.72728, lon: 96.83355 };
+
+    const getActivePolygon = () => {
+        if (appSettings && appSettings.activeGpsCoords) {
+            try {
+                if (typeof appSettings.activeGpsCoords === 'string') {
+                    return JSON.parse(appSettings.activeGpsCoords);
+                }
+                return appSettings.activeGpsCoords;
+            } catch(e) { console.error("Gagal parse activeGpsCoords dari appSettings"); }
+        }
+        return getDataFromCache('activeGpsCoords', defaultOfficePolygon);
+    };
+
+    const getGpsPresets = () => getDataFromCache('gpsPresetList', [{ name: "Area Kantor MS Redelong (Default)", coords: defaultOfficePolygon }]);
+    async function saveGpsPresets(presets) { await updateAndSaveData('gpsPresetList', presets); }
+    
+    async function addGpsPreset(name, coords) {
+        if (!name || name.trim() === '') { alert('Nama preset tidak boleh kosong!'); return false; }
+        const presets = getGpsPresets();
+        const existingPresetIndex = presets.findIndex(p => p.name.trim().toLowerCase() === name.trim().toLowerCase());
+
+        if (existingPresetIndex !== -1) {
+             if(confirm(`Preset dengan nama "${name.trim()}" sudah ada. Apakah Anda ingin menimpanya?`)){
+                presets[existingPresetIndex].coords = coords;
+             } else {
+                return false;
+             }
+        } else {
+            presets.push({ name: name.trim(), coords });
+        }
+        await saveGpsPresets(presets);
+        return true;
+    }
+
+    async function removeGpsPreset(name) {
+        if (name === "Area Kantor MS Redelong (Default)") {
+            alert("Preset default tidak dapat dihapus.");
+            return;
+        }
+        let presets = getGpsPresets().filter(p => p.name !== name);
+        await saveGpsPresets(presets);
+    }
+
+    // --- Manajemen Pembagian Tugas ---
+    const getDefaultJobAllocations = () => ([
+        { name: "Suryadi", roomsLantai1: "Halaman Depan & Front Desk, Ruang Tunggu VIP, Ruang Kepaniteraan, Ruang Kasir, Ruang PTSP Dalam, Ruang Server, Toilet Umum Perempuan (Para Pihak)", roomsLantai2: "" },
+        { name: "Arif Munandar", roomsLantai1: "Ruang Kesekretariatan, Ruang Sidang 1, Ruang Mediasi, Tempat Bermain Anak, Toilet Umum Perempuan", roomsLantai2: "Balkon" },
+        { name: "Firda Saputra", roomsLantai1: "Ruang PTSP Luar, Ruang Tunggu Sidang, Toilet Umum Laki-laki (Para Pihak)", roomsLantai2: "" },
+        { name: "Eko Setiawan", roomsLantai1: "Ruang Jaksa/Pengacara, Ruang Sidang Utama, Ruang Sidang Utama Belakang, Ruang Tahanan, Toilet Tahanan", roomsLantai2: "" },
+        { name: "Elfiana", roomsLantai1: "", roomsLantai2: "Ruang Ketua, Toilet Ruang Ketua, Ruang Media Center, Ruang Panitera, Toilet Panitera, Ruang Hakim, Ruang Perpustakaan, Gudang Kecil, Ruang Aula & Tangga, Toilet Wanita (Lantai 2)" },
+        { name: "Seri Wahyuni", roomsLantai1: "", roomsLantai2: "Ruang Tunggu Lantai 2 & Tangga, Ruang Wakil Ketua, Toilet Wakil Ketua, Ruang Bendahara, Ruang Sekretaris, Toilet Sekretaris, Toilet Pria (Lantai 2), Pantri Coffe, Arsip Dinamis, Arsip Perkara" },
+        { name: "Pegawai Posyabakum", roomsLantai1: "Ruang Posyabakum", roomsLantai2: "" },
+        { name: "Para Pegawai Kesekretariatan", roomsLantai1: "Toilet Kesekretariatan", roomsLantai2: "" },
+        { name: "Para Pegawai Kepaniteraan", roomsLantai1: "Toilet Kepaniteraan", roomsLantai2: "" },
+        { name: "Firda Saputra & Rusdi", roomsLantai1: "Toilet Umum Laki-laki (Para Pihak)", roomsLantai2: "" },
+        { name: "Arif Munandar & Suryadi", roomsLantai1: "Toilet Umum Perempuan (Para Pihak)", roomsLantai2: "" }
+    ]);
+    const getJobAllocations = () => getDataFromCache('jobAllocations', getDefaultJobAllocations());
+    async function saveJobAllocations(allocations) { await updateAndSaveData('jobAllocations', allocations); }
+    
+// --- ================================== ---
+// ---       INSIALISASI APLIKASI         ---
+// --- ================================== ---
+
+    function initParticleAnimation() {
+        if (!ENABLE_PARTICLES) return;
+        const wrapper = document.getElementById('animation-wrapper');
+        if (!wrapper || wrapper.children.length > 0) return;
+        const particleCount = 20;
+        for (let i = 0; i < particleCount; i++) {
+            const particle = document.createElement('div');
+            particle.classList.add('particle');
+            const size = Math.random() * 40 + 10;
+            particle.style.width = `${size}px`;
+            particle.style.height = `${size}px`;
+            particle.style.left = `${Math.random() * 100}%`;
+            particle.style.bottom = `-${size}px`;
+            const duration = Math.random() * 20 + 20;
+            const delay = Math.random() * 15;
+            particle.style.animationDuration = `${duration}s`;
+            particle.style.animationDelay = `${delay}s`;
+            wrapper.appendChild(particle);
+        }
+    }
+    
+    function showView(viewId) {
+        console.log(`Mencoba menampilkan view: ${viewId}`);
+        document.querySelectorAll('.main-view').forEach(view => {
+            if (view.id === 'attendance-page-wrapper' && view.style.display !== 'none') {
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                    stream = null;
+                }
+                if (detectionInterval) {
+                    clearInterval(detectionInterval);
+                    detectionInterval = null;
+                }
+            }
+            view.style.display = 'none';
+        });
+
+        const targetView = document.getElementById(viewId);
+        if (targetView) {
+            targetView.style.display = 'flex'; 
+            targetView.classList.add('fade-in');
+        } else {
+            console.error(`View dengan ID "${viewId}" tidak ditemukan.`);
+        }
+    }
+
+    let faceApiModelsLoaded = false;
+
+    async function loadFaceApiModels() {
+        if (faceApiModelsLoaded) {
+            return true;
+        }
+
+        console.log("Memulai pemuatan model AI...");
+        try {
+            await Promise.all([
+                faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+                faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+                faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+                faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL)
+            ]);
+            console.log("Semua model face-api berhasil dimuat.");
+            faceApiModelsLoaded = true;
+            return true;
+        } catch (e) {
+            console.error("Gagal memuat model face-api:", e);
+            alert("Gagal memuat komponen AI. Fitur validasi wajah otomatis akan dinonaktifkan.");
+            return false;
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', async () => {
         console.log("DOM Content Loaded. Memulai inisialisasi aplikasi.");
         const initialLoader = document.getElementById('initial-loader');
@@ -1001,19 +1218,16 @@
 
         initParticleAnimation();
 
-        // --- TAHAP 1: Ambil data penting dan tampilkan UI secepat mungkin ---
         loaderText.textContent = 'Menyinkronkan pengaturan...';
-        await fetchAppSettings(); // Ambil pengaturan dasar
+        await fetchAppSettings();
 
         const loggedInUser = sessionStorage.getItem('absenUser');
         const userRole = sessionStorage.getItem('absenRole');
 
-        // --- TAHAP 2: Tampilkan halaman yang sesuai TANPA menunggu model AI ---
         if (loggedInUser) {
-            // Jika sudah login, langsung tampilkan dashboard
             document.body.classList.add('dashboard-active');
             const loginPage = document.getElementById('login-page');
-            if (loginPage) loginPage.remove(); // Hapus halaman login dari DOM
+            if (loginPage) loginPage.remove();
 
             if (userRole === "Pengawas") {
                 renderSupervisorPage();
@@ -1021,19 +1235,15 @@
                 renderVisitorPage();
             } else {
                 renderAttendancePage(loggedInUser);
-                // PENTING: Panggil pemuatan model AI di sini, hanya untuk halaman absensi.
-                // Fungsi ini berjalan di latar belakang setelah UI ditampilkan.
                 loadFaceApiModels(); 
             }
 
         } else {
-            // Jika belum login, tampilkan halaman login
             document.body.classList.remove('dashboard-active');
             const employeeList = getEmployeeList();
             renderLoginPage(employeeList);
         }
 
-        // --- TAHAP 3: Sembunyikan loader awal karena UI sudah siap ---
         initialLoader.style.opacity = '0';
         setTimeout(() => {
             initialLoader.style.display = 'none';
@@ -1041,14 +1251,9 @@
                 appContainer.style.visibility = 'visible';
                 appContainer.style.opacity = '1';
             }
-        }, 500); // Tunggu 0.5 detik untuk transisi fade-out
-
-        // CATATAN: Pemuatan model AI yang berat sudah dipindahkan dari sini.
+        }, 500);
     });
 
-    /**
-     * Merender halaman Absensi untuk Pegawai.
-     */
     function renderAttendancePage(loggedInUser) {
         const pageContainer = document.getElementById('attendance-page-wrapper');
         pageContainer.innerHTML = `
@@ -1111,9 +1316,6 @@
         runAttendanceScript();
     }
 
-    /**
-     * Merender halaman Dashboard untuk Pengawas.
-     */
     function renderSupervisorPage() {
         const pageContainer = document.getElementById('supervisor-page-wrapper');
         pageContainer.innerHTML = `
@@ -1637,9 +1839,6 @@
         runSupervisorScript();
     }
     
-    /**
-     * Merender halaman read-only untuk Pengunjung.
-     */
     function renderVisitorPage() {
         const pageContainer = document.getElementById('visitor-page-wrapper');
         pageContainer.innerHTML = `
@@ -1665,10 +1864,6 @@
         setupLogout('logout-btn-visitor');
     }
 
-    /**
-     * Menjalankan semua skrip dan event listener untuk Halaman Login.
-     * Menerima employeeList sebagai parameter untuk mempercepat render.
-     */
     function renderLoginPage(employeeList = []) {
         showView('login-page');
 
@@ -1684,7 +1879,6 @@
         const passwordStatusText = document.getElementById('password-status-text');
         const exitLoginBtn = document.getElementById('exit-login-btn');
         
-        // Gunakan employeeList dari parameter, bukan memanggil getEmployeeList() lagi
         if (employeeList.length > 0) {
             usernameSelect.innerHTML = '<option value="" disabled selected>-- Pilih Nama Anda --</option>' + 
                                    employeeList.map(name => `<option value="${name}">${name}</option>`).join('');
@@ -1817,9 +2011,6 @@
     // ---     LOGIKA INTI & SKRIP HALAMAN      ---
     // --- ================================== ---
 
-    /**
-     * Mengatur input tanggal dan waktu ke waktu saat ini.
-     */
     function setDateTimeToNow() {
         const now = new Date();
         const timezoneOffset = now.getTimezoneOffset() * 60000;
@@ -1835,9 +2026,7 @@
             timeInput.value = localDate.toISOString().split('T')[1].substring(0, 5);
         }
     }
-    /**
-     * Mengisi dropdown pilihan ruangan dengan data dari localStorage.
-     */
+
     function populateRoomOptions() {
         const roomSelect = document.getElementById('ruang');
         if (!roomSelect) return;
@@ -1868,9 +2057,6 @@
         roomChoicesInstance.setChoices(choicesArray, 'value', 'label', true);
     }
     
-    // --- PENINGKATAN: Fungsi baru untuk memulai deteksi wajah agar bisa dipanggil ulang.
-    // PERBAIKAN PADA FUNGSI startFaceDetection
-    // Pastikan fungsi ini menunggu model AI selesai dimuat sebelum berjalan.
     function startFaceDetection() {
         const video = document.getElementById('video');
         const snapButton = document.getElementById('snap-button');
@@ -1882,20 +2068,10 @@
         
         if (!video || !snapButton || !faceStatusDiv) return;
 
-        // Cek jika model AI sedang dimuat atau gagal
         if (!faceApiModelsLoaded) {
-            faceStatusDiv.innerHTML = "Sedang memuat model AI, harap tunggu...";
+            faceStatusDiv.innerHTML = "Sedang memuat model AI...";
             faceStatusDiv.className = `status-badge info`;
-
-            // Coba lagi setelah beberapa saat
             setTimeout(startFaceDetection, 1500);
-            return;
-        }
-
-        if (window.faceApiFailed === true) {
-            snapButton.disabled = false;
-            faceStatusDiv.innerHTML = "⚠️ Deteksi wajah gagal dimuat. Mode manual.";
-            faceStatusDiv.className = `status-badge warning`;
             return;
         }
 
@@ -1903,24 +2079,13 @@
             const isPhotoTaken = !!document.getElementById('photo-data').value;
             if (isPhotoTaken) return; 
             
-            if (typeof faceapi === 'undefined') {
-                snapButton.disabled = false;
-                faceStatusDiv.innerHTML = "⚠️ Deteksi wajah gagal dimuat. Bypass diaktifkan.";
-                faceStatusDiv.className = `status-badge warning`;
-                clearInterval(detectionInterval);
-                detectionInterval = null;
-                return;
-            }
-
             const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions());
             snapButton.disabled = detections.length === 0;
-            faceStatusDiv.innerHTML = detections.length > 0 ? "✅ Wajah terdeteksi, siap mengambil foto." : "❌ Tidak ada wajah terdeteksi.";
+            faceStatusDiv.innerHTML = detections.length > 0 ? "✅ Wajah terdeteksi, siap." : "❌ Tidak ada wajah terdeteksi.";
             faceStatusDiv.className = `status-badge ${detections.length > 0 ? 'success' : 'danger'}`;
         }, 800);
     }
-    /**
-     * Menjalankan semua skrip yang diperlukan untuk halaman absensi pegawai.
-     */
+
     function runAttendanceScript() {
         const form = document.getElementById('attendance-form'), video = document.getElementById('video'), canvas = document.getElementById('canvas'),
                 photoPreview = document.getElementById('photo-preview'), snapButton = document.getElementById('snap-button'), retakeButton = document.getElementById('retake-button'),
@@ -1936,8 +2101,6 @@
         if (attendanceSettings.mode === 'realtime' || attendanceSettings.mode === 'window') {
             dateInput.readOnly = true;
             timeInput.readOnly = true;
-            dateInput.title = "Tanggal & waktu diatur otomatis oleh pengawas.";
-            timeInput.title = "Tanggal & waktu diatur otomatis oleh pengawas.";
             setDateTimeToNow();
         }
 
@@ -1963,9 +2126,8 @@
 
                     if (allMyRooms.length > 0 && roomChoicesInstance) {
                         roomChoicesInstance.setValue(allMyRooms);
-                        alert('Ruangan telah diisi sesuai dengan pembagian tugas Anda.');
                     } else {
-                        alert('Tidak ada ruangan yang ditugaskan untuk Anda dalam data pembagian tugas.');
+                        alert('Tidak ada ruangan yang ditugaskan untuk Anda.');
                     }
                 } else {
                     alert('Pembagian tugas untuk Anda tidak ditemukan.');
@@ -2039,13 +2201,11 @@
         initializeCamera();
         
         snapButton.addEventListener('click', async () => {
-            if (window.faceApiFailed !== true && typeof faceapi !== 'undefined') {
-                const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions());
-                if (!detections) {
-                    faceOverlay.style.opacity = '1'; faceOverlay.innerText = "Wajah tidak terdeteksi. Coba lagi.";
-                    setTimeout(() => { faceOverlay.style.opacity = '0'; }, 3000);
-                    return;
-                }
+            const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions());
+            if (!detections && faceApiModelsLoaded) {
+                faceOverlay.style.opacity = '1'; faceOverlay.innerText = "Wajah tidak terdeteksi. Coba lagi.";
+                setTimeout(() => { faceOverlay.style.opacity = '0'; }, 3000);
+                return;
             }
             
             if(detectionInterval) {
@@ -2074,9 +2234,7 @@
             snapButton.classList.remove('hidden'); retakeButton.classList.add('hidden');
             photoDataInput.value = ''; 
             faceStatusDiv.innerHTML = "Menunggu deteksi wajah..."; faceStatusDiv.className = 'status-badge warning';
-            
             startFaceDetection();
-            
             checkConditionsAndEnableSubmit();
         });
 
@@ -2086,7 +2244,6 @@
             let isTimeValid = true;
             let timeStatusText = '';
 
-            const attendanceSettings = getDataFromCache('attendanceSettings', { mode: 'manual' });
             if (attendanceSettings.mode === 'window') {
                 const { startTime, endTime } = attendanceSettings;
                 if (startTime && endTime) {
@@ -2094,7 +2251,7 @@
                     const currentTime = now.toTimeString().slice(0, 5);
                     if (currentTime < startTime || currentTime > endTime) {
                         isTimeValid = false;
-                        timeStatusText = `Di luar jam absen wajib (${startTime} - ${endTime})`;
+                        timeStatusText = `Di luar jam absen (${startTime} - ${endTime})`;
                     }
                 }
             }
@@ -2102,7 +2259,6 @@
             if (isGpsValid && isPhotoPresent && isTimeValid) {
                 submitButton.disabled = false;
                 submitStatus.innerText = "";
-                document.getElementById('submit-btn-text').innerText = "Kirim ke Pengawas";
             } else {
                 submitButton.disabled = true;
                 let statusText = [];
@@ -2110,7 +2266,6 @@
                 if (!isPhotoPresent) statusText.push("Foto belum diambil");
                 if (!isTimeValid) statusText.push(timeStatusText);
                 submitStatus.innerText = "Tombol nonaktif: " + statusText.join(' & ');
-                document.getElementById('submit-btn-text').innerText = "Lengkapi Data";
             }
         }
         checkConditionsAndEnableSubmit();
@@ -2124,12 +2279,10 @@
             }
             
             const now = new Date();
-            const timezoneOffset = now.getTimezoneOffset() * 60000;
-            const localISOTime = new Date(now - timezoneOffset).toISOString(); // Dibuat lebih presisi dengan milidetik
+            const localISOTime = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString();
+            const uniqueId = `${localISOTime}-${Math.random().toString(36).substring(2, 9)}`;
+            formData.set('timestamp', uniqueId);
 
-// BUAT ID YANG DIJAMIN UNIK dengan menambahkan angka acak di akhir
-const uniqueId = `${localISOTime}-${Math.random().toString(36).substring(2, 9)}`;
-formData.set('timestamp', uniqueId); // Kirim ID unik ini sebagai timestamp
             const tanggalInput = document.getElementById('tanggal').value;
             const waktuInput = document.getElementById('waktu').value;
             if (!tanggalInput || !waktuInput) {
@@ -2146,7 +2299,7 @@ formData.set('timestamp', uniqueId); // Kirim ID unik ini sebagai timestamp
             const submitBtnText = document.getElementById('submit-btn-text');
             const submitLoader = document.getElementById('submit-loader');
             submitButton.disabled = true; submitBtnText.classList.add('hidden'); submitLoader.classList.remove('hidden');
-            submitStatus.innerText = 'Mengirim data dan foto, mohon tunggu...';
+            submitStatus.innerText = 'Mengirim data...';
             submitStatus.style.color = 'var(--accent-primary)';
 
             try {
@@ -2154,7 +2307,7 @@ formData.set('timestamp', uniqueId); // Kirim ID unik ini sebagai timestamp
                 const result = await res.json();
                 if (result.result === 'success') {
                     alert('Absensi berhasil dikirim!');
-                    submitStatus.innerText = 'Berhasil dikirim! Anda bisa absen lagi.';
+                    submitStatus.innerText = 'Berhasil dikirim!';
                     submitStatus.style.color = 'var(--success-color)';
                     form.reset();
                     if (roomChoicesInstance) {
@@ -2163,27 +2316,21 @@ formData.set('timestamp', uniqueId); // Kirim ID unik ini sebagai timestamp
                     }
                     if(retakeButton) retakeButton.click(); 
                     
-                    const attendanceSettings = getDataFromCache('attendanceSettings', { mode: 'manual' });
                     if(attendanceSettings.mode === 'realtime' || attendanceSettings.mode === 'window') {
                         setDateTimeToNow();
                     }
                     checkConditionsAndEnableSubmit();
                 } else { 
-                    alert('Gagal mengirim: ' + (JSON.stringify(result.error) || 'Unknown error')); 
-                    submitStatus.innerText = 'Gagal mengirim data.';
-                    submitStatus.style.color = 'var(--danger-color)';
+                    throw new Error(JSON.stringify(result.error) || 'Unknown error');
                 }
             } catch (err) {
-                alert('Terjadi error: ' + err.message);
-                submitStatus.innerText = 'Terjadi error jaringan. Pastikan Anda menjalankan file ini dari web server.';
+                alert('Gagal mengirim: ' + err.message);
+                submitStatus.innerText = 'Gagal mengirim data.';
                 submitStatus.style.color = 'var(--danger-color)';
             } finally {
-                if(submitStatus.style.color !== 'var(--success-color)') {
-                     checkConditionsAndEnableSubmit();
-                }
+                submitButton.disabled = false;
                 submitBtnText.classList.remove('hidden'); 
                 submitLoader.classList.add('hidden');
-                setTimeout(() => { if(submitStatus) submitStatus.innerText = ''; }, 5000);
             }
         });
         setupLogout('logout-btn-attendance');
@@ -2249,20 +2396,16 @@ formData.set('timestamp', uniqueId); // Kirim ID unik ini sebagai timestamp
             document.getElementById('center-lon-input').value = centerLon.toFixed(8);
         }
 
-        /**
-         * PERBAIKAN: Fungsi ini sekarang menyimpan ke Google Sheet juga
-         */
         async function saveAndNotify(coords) {
             generateAreaBtn.disabled = true;
             generateAreaBtn.innerHTML = `<div class="loader inline-loader"></div> Menyimpan...`;
             try {
-                // Panggil fungsi untuk update ke local storage DAN Google Sheet
                 await updateAndSaveData('activeGpsCoords', coords);
                 document.getElementById('active-preset-status').textContent = 'Area Aktif Telah Diterapkan';
                 alert('Area absensi baru berhasil diterapkan dan disimpan di server!');
             } catch (error) {
                 console.error("Gagal menyimpan area GPS ke server:", error);
-                alert("Gagal menyimpan area GPS ke server. Perubahan hanya tersimpan sementara di perangkat ini.");
+                alert("Gagal menyimpan area GPS ke server. Perubahan hanya tersimpan di perangkat ini.");
             } finally {
                 generateAreaBtn.disabled = false;
                 generateAreaBtn.textContent = 'Terapkan & Simpan Area Aktif';
@@ -2381,7 +2524,7 @@ formData.set('timestamp', uniqueId); // Kirim ID unik ini sebagai timestamp
                 }
             }
             updatePolygonOnMap(newCoords);
-            saveAndNotify(newCoords); // Panggil fungsi yang sudah diperbaiki
+            saveAndNotify(newCoords);
         });
 
         document.getElementById('geolocate-btn').addEventListener('click', (e) => {
@@ -2433,50 +2576,11 @@ formData.set('timestamp', uniqueId); // Kirim ID unik ini sebagai timestamp
         if (!dateObj || isNaN(new Date(dateObj).getTime())) {
             return 'Format Salah';
         }
+        // Selalu gunakan UTC untuk konsistensi tampilan tanggal
         const options = { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' };
         return new Date(dateObj).toLocaleDateString('id-ID', options);
     }
     
-    /**
-     * Parses a timestamp string in "DD/MM/YYYY HH:mm:ss" format into a valid Date object.
-     * @param {string} timestampStr - The timestamp string from the spreadsheet.
-     * @returns {Date|null} A valid Date object or null if parsing fails.
-     */
-    function parseCustomTimestamp(timestampStr) {
-        if (!timestampStr || typeof timestampStr !== 'string') {
-            return null;
-        }
-
-        // Coba parsing format "DD/MM/YYYY HH:mm:ss"
-        const parts = timestampStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s(\d{1,2}):(\d{1,2}):(\d{1,2})$/);
-        
-        if (parts) {
-            // parts[0] is the full match, then day, month, year, etc.
-            const day = parseInt(parts[1], 10);
-            const month = parseInt(parts[2], 10) - 1; // JS months are 0-indexed
-            const year = parseInt(parts[3], 10);
-            const hour = parseInt(parts[4], 10);
-            const minute = parseInt(parts[5], 10);
-            const second = parseInt(parts[6], 10);
-            
-            const date = new Date(year, month, day, hour, minute, second);
-            
-            // Verifikasi bahwa tanggal yang dibuat valid (misalnya, tidak ada 30 Februari)
-            if (date.getFullYear() === year && date.getMonth() === month && date.getDate() === day) {
-                return date;
-            }
-        }
-        
-        // Fallback untuk format ISO (YYYY-MM-DDTHH:mm:ss.sssZ) atau format lain yang dikenali `new Date()`
-        const fallbackDate = new Date(timestampStr);
-        if (!isNaN(fallbackDate.getTime())) {
-            return fallbackDate;
-        }
-
-        console.warn(`Gagal mem-parsing timestamp: "${timestampStr}"`);
-        return null; // Return null jika semua metode parsing gagal
-    }
-
     async function fetchAttendanceData(isReadOnly = false) {
         const container = document.getElementById('attendance-records-container');
         if (!container) return;
@@ -2485,14 +2589,13 @@ formData.set('timestamp', uniqueId); // Kirim ID unik ini sebagai timestamp
             <div class="flex flex-col items-center justify-center p-8 text-center" style="min-height: 300px;">
                 <div class="loader mb-4" style="width: 40px; height: 40px; border-width: 4px;"></div>
                 <p class="text-text-secondary text-lg font-medium">Memuat data absensi...</p>
-                <p class="text-text-secondary text-sm">Mohon tunggu sebentar, proses ini mungkin memakan waktu beberapa saat.</p>
+                <p class="text-text-secondary text-sm">Mohon tunggu sebentar...</p>
             </div>`;
 
         try {
             const response = await fetch(`${SPREADSHEET_URL}?t=${new Date().getTime()}`);
             if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Gagal mengambil data dari server (Status: ${response.status}). Pesan: ${errorText}`);
+                throw new Error(`Gagal mengambil data dari server (Status: ${response.status})`);
             }
             
             const responseData = await response.json();
@@ -2501,20 +2604,17 @@ formData.set('timestamp', uniqueId); // Kirim ID unik ini sebagai timestamp
             }
 
             if (!Array.isArray(responseData)) {
-                throw new Error("Format data yang diterima dari server tidak valid (bukan array).");
+                throw new Error("Format data dari server tidak valid.");
             }
             
-            // --- PERBAIKAN UTAMA ADA DI SINI ---
             fullAttendanceData = responseData.map(row => {
-                // Menggunakan fungsi parsing baru yang lebih andal
-                const parsedDate = parseCustomTimestamp(row.timestamp); 
+                // Karena script sudah menyeragamkan format ke ISO, kita bisa langsung parse dengan aman.
+                const parsedDate = new Date(row.timestamp); 
                 return {
                     ...row,
-                    // Tetap menyimpan hasil parse, yang akan null jika gagal
-                    parsedDate: parsedDate 
+                    parsedDate: !isNaN(parsedDate.getTime()) ? parsedDate : null
                 };
             }).sort((a, b) => {
-                // Mengurutkan dari yang terbaru ke terlama
                 const dateA = a.parsedDate ? a.parsedDate.getTime() : 0;
                 const dateB = b.parsedDate ? b.parsedDate.getTime() : 0;
                 return dateB - dateA;
@@ -2526,18 +2626,16 @@ formData.set('timestamp', uniqueId); // Kirim ID unik ini sebagai timestamp
             console.error('Error fetching attendance data:', error);
             container.innerHTML = `
                 <div class="form-section-card !bg-danger-color/10 border-danger-color/50 !p-6 text-center">
-                    <h3 class="text-2xl font-bold text-danger-color mb-3">Gagal Memuat Data Absensi</h3>
-                    <p class="text-text-secondary mb-4">Terjadi masalah saat mencoba mengambil data dari Google Sheet. Halaman tidak bisa ditampilkan.</p>
+                    <h3 class="text-2xl font-bold text-danger-color mb-3">Gagal Memuat Data</h3>
+                    <p class="text-text-secondary mb-4">Terjadi masalah saat mengambil data dari Google Sheet.</p>
                     <div class="text-left text-sm bg-black/20 p-4 rounded-lg mb-4">
                         <strong>Detail Error:</strong>
                         <pre class="whitespace-pre-wrap text-warning-color mt-1">${error.message}</pre>
                     </div>
-                    <strong class="text-text-primary">Langkah yang bisa dicoba:</strong>
                     <ul class="list-disc list-inside text-left text-text-secondary mt-2 space-y-1">
-                        <li>Pastikan Anda terhubung ke internet.</li>
-                        <li>Coba muat ulang (refresh) halaman ini.</li>
-                        <li>Pastikan Google Apps Script sudah di-deploy ulang dengan benar (Akses: "Anyone").</li>
-                        <li>Pastikan Anda menjalankan file HTML ini dari Web Server (contoh: ekstensi Live Server di VS Code), bukan dibuka langsung sebagai file.</li>
+                        <li>Pastikan Anda sudah Deploy Ulang Apps Script yang baru.</li>
+                        <li>Periksa koneksi internet Anda.</li>
+                        <li>Coba muat ulang halaman ini.</li>
                     </ul>
                 </div>`;
         }
@@ -2547,7 +2645,7 @@ formData.set('timestamp', uniqueId); // Kirim ID unik ini sebagai timestamp
         const container = document.getElementById('attendance-records-container');
         if (!container) return;
         if (data.length === 0) {
-            container.innerHTML = '<p class="text-center text-text-secondary py-8">Tidak ada data absensi ditemukan untuk filter ini.</p>';
+            container.innerHTML = '<p class="text-center text-text-secondary py-8">Tidak ada data absensi yang ditemukan.</p>';
             return;
         }
 
@@ -2563,35 +2661,36 @@ formData.set('timestamp', uniqueId); // Kirim ID unik ini sebagai timestamp
                 </thead>
                 <tbody>
                     ${data.map(row => {
+                        const timestamp = row.timestamp; // Sekarang timestamp sudah pasti ada dan standar
                         const formattedDate = row.tanggal || (row.parsedDate ? formatDateForDisplay(row.parsedDate) : 'N/A');
                         const formattedTime = row.waktu || (row.parsedDate ? row.parsedDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }) + ' WIB' : '');
-                        const gpsLink = row.gps ? `http://www.google.com/maps/place/${row.gps}` : '#';
+                        const gpsLink = row.gps ? `https://www.google.com/maps?q=${row.gps}` : '#';
                         
                         return `
-                        <tr data-timestamp="${row.timestamp || ''}">
-                            ${!isReadOnly ? `<td><input type="checkbox" class="row-checkbox" data-timestamp="${row.timestamp}"></td>` : ''}
+                        <tr data-timestamp="${timestamp}">
+                            ${!isReadOnly ? `<td><input type="checkbox" class="row-checkbox" data-timestamp="${timestamp}"></td>` : ''}
                             <td>${row.nama || ''}</td>
-                            <td class="room-cell">${row.nama_ruang || ''}</td>
-                            <td id="date-cell-${row.timestamp}">${formattedDate}</td>
-                            <td id="time-cell-${row.timestamp}">${formattedTime}</td>
+                            <td class="room-cell">${row.ruangan || row.nama_ruang || ''}</td>
+                            <td id="date-cell-${timestamp}">${formattedDate}</td>
+                            <td id="time-cell-${timestamp}">${formattedTime}</td>
                             <td><a href="${gpsLink}" target="_blank" class="text-accent-primary hover:underline">${(row.gps || '').substring(0,20)}...</a></td>
-                            <td id="assessment-cell-${row.timestamp}">
+                            <td id="assessment-cell-${timestamp}">
                                 ${isReadOnly ? (row.penilaian || '<em>Belum dinilai</em>') : `
                                 <div class="flex items-center">
-                                <select class="assessment-select" onchange="handleAssessmentChange('${row.timestamp}', this)">
+                                <select class="assessment-select" onchange="handleAssessmentChange('${timestamp}', this)">
                                     <option value="">-- Beri Nilai --</option>
                                     <option value="Baik" ${row.penilaian === 'Baik' ? 'selected' : ''}>Baik</option>
                                     <option value="Cukup Baik" ${row.penilaian === 'Cukup Baik' ? 'selected' : ''}>Cukup Baik</option>
                                     <option value="Kurang Baik" ${row.penilaian === 'Kurang Baik' ? 'selected' : ''}>Kurang Baik</option>
                                 </select>
-                                <span id="status-${row.timestamp}" class="ml-2"></span>
+                                <span id="status-${timestamp}" class="ml-2"></span>
                                 </div>
                                 `}
                             </td>
-                            ${!isReadOnly ? `<td id="action-cell-${row.timestamp}">
+                            ${!isReadOnly ? `<td id="action-cell-${timestamp}">
                                 <div class="flex gap-2">
-                                    <button class="btn btn-secondary !py-1 !px-2 text-xs" onclick="editRecord('${row.timestamp}')" title="Edit Tanggal/Waktu"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z"></path></svg>Edit</button>
-                                    <button class="btn btn-danger !py-1 !px-2 text-xs" onclick="deleteRecord('${row.timestamp}')" title="Hapus Data"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>Hapus</button>
+                                    <button class="btn btn-secondary !py-1 !px-2 text-xs" onclick="editRecord('${timestamp}')" title="Edit Tanggal/Waktu"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z"></path></svg>Edit</button>
+                                    <button class="btn btn-danger !py-1 !px-2 text-xs" onclick="deleteRecord('${timestamp}')" title="Hapus Data"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>Hapus</button>
                                 </div>
                                 </td>` : ''}
                         </tr>`;
@@ -2690,7 +2789,7 @@ formData.set('timestamp', uniqueId); // Kirim ID unik ini sebagai timestamp
         } catch (error) {
             statusSpan.innerHTML = `❌`;
             alert(`Gagal menyimpan penilaian. Coba lagi.\nError: ${error.reason}`);
-            const originalData = fullAttendanceData.find(d => (d.timestamp || d.Timestamp) === timestamp);
+            const originalData = fullAttendanceData.find(d => d.timestamp === timestamp);
             if (originalData) selectElement.value = originalData.penilaian || "";
         } finally {
             selectElement.disabled = false;
@@ -2713,7 +2812,7 @@ formData.set('timestamp', uniqueId); // Kirim ID unik ini sebagai timestamp
             if (result.result !== 'success') {
                 throw new Error(result.error || 'Server error during assessment update');
             }
-            const dataIndex = fullAttendanceData.findIndex(d => (d.timestamp || d.Timestamp) === timestamp);
+            const dataIndex = fullAttendanceData.findIndex(d => d.timestamp === timestamp);
             if(dataIndex > -1) fullAttendanceData[dataIndex].penilaian = value;
             return { status: 'fulfilled', timestamp };
         } catch (error) {
@@ -2827,7 +2926,7 @@ formData.set('timestamp', uniqueId); // Kirim ID unik ini sebagai timestamp
                 const result = await response.json();
                 if (result.result === 'success') {
                     if (rowToDelete) rowToDelete.remove();
-                    fullAttendanceData = fullAttendanceData.filter(row => (row.timestamp || row.Timestamp) !== timestamp);
+                    fullAttendanceData = fullAttendanceData.filter(row => row.timestamp !== timestamp);
                     return Promise.resolve({ timestamp });
                 } else { throw new Error(result.error || 'Gagal menghapus di server.'); }
             } catch (error) {
@@ -2883,7 +2982,7 @@ formData.set('timestamp', uniqueId); // Kirim ID unik ini sebagai timestamp
             head: [['Nama', 'Ruangan', 'Tanggal', 'Waktu', 'GPS', 'Penilaian']],
             body: dataToPrint.map(row => [
                 row.nama || '',
-                row.nama_ruang || '',
+                row.ruangan || row.nama_ruang || '',
                 row.tanggal || 'N/A',
                 (row.waktu || '').replace('WIB', '').trim(),
                 row.gps || '',
@@ -3006,7 +3105,7 @@ formData.set('timestamp', uniqueId); // Kirim ID unik ini sebagai timestamp
             const dateKey = `${recordDate.getFullYear()}-${String(recordDate.getMonth() + 1).padStart(2, '0')}-${String(recordDate.getDate()).padStart(2, '0')}`;
             const mapKey = `${record.nama}-${dateKey}`;
             if (!cleanedData.has(mapKey)) cleanedData.set(mapKey, new Set());
-            const cleanedRooms = (record.nama_ruang || '').split(',').map(r => r.trim()).filter(Boolean);
+            const cleanedRooms = (record.ruangan || record.nama_ruang || '').split(',').map(r => r.trim()).filter(Boolean);
             cleanedRooms.forEach(room => cleanedData.get(mapKey).add(room));
         });
 
@@ -3076,27 +3175,14 @@ formData.set('timestamp', uniqueId); // Kirim ID unik ini sebagai timestamp
         container.style.opacity = '0.5'; 
         
         try {
-            // --- MULAI BLOK KODE BARU ---
+            const randomMinute = String(Math.floor(Math.random() * 60)).padStart(2, '0');
+            const randomSecond = String(Math.floor(Math.random() * 60)).padStart(2, '0');
+            const randomTimeString = `07:${randomMinute}:${randomSecond}`;
+            const targetDate = new Date(`${dateKey}T${randomTimeString}+07:00`);
 
-// 1. Buat menit & detik secara acak (0-59)
-const randomMinute = Math.floor(Math.random() * 60);
-const randomSecond = Math.floor(Math.random() * 60);
-
-// 2. Format menit & detik agar selalu 2 digit (contoh: 05, 23, 59)
-const minuteString = String(randomMinute).padStart(2, '0');
-const secondString = String(randomSecond).padStart(2, '0');
-
-// 3. Gabungkan menjadi format waktu dengan jam 07 dan zona waktu WIB (+07:00)
-// Ini cara paling akurat untuk menentukan tanggal dan waktu dengan timezone
-const randomTimeString = `07:${minuteString}:${secondString}`;
-const targetDate = new Date(`${dateKey}T${randomTimeString}+07:00`);
-
-// 4. Siapkan data, sekarang semuanya otomatis berdasarkan waktu acak di atas
-const timestamp = targetDate.toISOString(); // .toISOString() sudah dalam format UTC yang benar
-const formattedDate = targetDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' });
-const formattedTime = targetDate.toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }) + ' WIB';
-
-// --- SELESAI BLOK KODE BARU ---
+            const timestamp = targetDate.toISOString();
+            const formattedDate = targetDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' });
+            const formattedTime = targetDate.toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }) + ' WIB';
 
             const centerGps = getPolygonCenter();
             
@@ -3423,7 +3509,7 @@ const formattedTime = targetDate.toLocaleTimeString('id-ID', { hour12: false, ho
                 const employeeAttendance = attendanceForToday.filter(rec => rec.nama === alloc.name);
                 let completedRooms = [];
                 employeeAttendance.forEach(rec => {
-                    const rooms = (rec.nama_ruang || '').split(',').map(r => r.trim()).filter(Boolean);
+                    const rooms = (rec.ruangan || rec.nama_ruang || '').split(',').map(r => r.trim()).filter(Boolean);
                     completedRooms.push(...rooms);
                 });
                 const uniqueCompletedRooms = [...new Set(completedRooms)];
@@ -3803,15 +3889,15 @@ const formattedTime = targetDate.toLocaleTimeString('id-ID', { hour12: false, ho
                     resultsHTML += createResultItem('error', 'Konektivitas Google Sheets', 'Gagal terhubung. Pastikan URL benar, skrip telah di-deploy (akses "Anyone"), dan ada koneksi internet.');
                 }
             } catch (e) {
-                resultsHTML += createResultItem('error', 'Konektivitas Google Sheets', `Gagal melakukan request jaringan. Cek koneksi internet dan pastikan file dijalankan dari web server. Error: ${e.message}`);
+                resultsHTML += createResultItem('error', 'Konektivitas Google Sheets', `Gagal melakukan request jaringan. Cek koneksi internet. Error: ${e.message}`);
             }
 
-            const libs = { 'Face-API (Deteksi Wajah)': 'faceapi', 'Leaflet (Peta)': 'L', 'Choices (Dropdown)': 'Choices', 'jsPDF (Cetak PDF)': 'jspdf' };
+            const libs = { 'Face-API': 'faceapi', 'Leaflet (Peta)': 'L', 'Choices (Dropdown)': 'Choices', 'jsPDF': 'jspdf' };
             for (const [name, lib] of Object.entries(libs)) {
                 if (typeof window[lib] !== 'undefined') {
-                    resultsHTML += createResultItem('ok', `Pustaka ${name}`, 'Berhasil dimuat dan siap digunakan.');
+                    resultsHTML += createResultItem('ok', `Pustaka ${name}`, 'Berhasil dimuat.');
                 } else {
-                    resultsHTML += createResultItem('error', `Pustaka ${name}`, 'Gagal dimuat. Beberapa fitur mungkin tidak berfungsi. Periksa koneksi internet.');
+                    resultsHTML += createResultItem('error', `Pustaka ${name}`, 'Gagal dimuat. Beberapa fitur mungkin tidak berfungsi.');
                 }
             }
             
@@ -3824,7 +3910,7 @@ const formattedTime = targetDate.toLocaleTimeString('id-ID', { hour12: false, ho
                     try {
                         JSON.parse(data);
                     } catch (e) {
-                        resultsHTML += createResultItem('error', `Data Lokal: ${key}`, `Data untuk kunci '${key}' rusak (corrupt) dan tidak bisa dibaca.`);
+                        resultsHTML += createResultItem('error', `Data Lokal: ${key}`, `Data untuk kunci '${key}' rusak (corrupt).`);
                         dataOk = false;
                         hasCorruption = true;
                     }
@@ -3844,7 +3930,7 @@ const formattedTime = targetDate.toLocaleTimeString('id-ID', { hour12: false, ho
 
                 jobAllocations.forEach(job => {
                     if (!employeeSet.has(job.name)) {
-                        resultsHTML += createResultItem('warning', 'Inkonsistensi Tugas', `Pegawai bernama "${job.name}" memiliki tugas, tetapi tidak terdaftar di daftar utama pegawai.`);
+                        resultsHTML += createResultItem('warning', 'Inkonsistensi Tugas', `Pegawai "${job.name}" memiliki tugas, tetapi tidak ada di daftar utama.`);
                         inconsistenciesFound = true;
                         hasCorruption = true;
                     }
@@ -3852,13 +3938,13 @@ const formattedTime = targetDate.toLocaleTimeString('id-ID', { hour12: false, ho
 
                 employeeList.forEach(employee => {
                     if (!allocatedEmployees.has(employee)) {
-                        resultsHTML += createResultItem('warning', 'Tugas Belum Diatur', `Pegawai "${employee}" terdaftar, tetapi belum memiliki pembagian tugas di tab "Rekapan Proses".`);
+                        resultsHTML += createResultItem('warning', 'Tugas Belum Diatur', `Pegawai "${employee}" terdaftar, tetapi belum memiliki pembagian tugas.`);
                         inconsistenciesFound = true;
                     }
                 });
 
                 if (!inconsistenciesFound) {
-                     resultsHTML += createResultItem('ok', 'Konsistensi Data Pegawai', 'Data daftar pegawai dan pembagian tugas sudah sinkron.');
+                     resultsHTML += createResultItem('ok', 'Konsistensi Data Pegawai', 'Data pegawai dan pembagian tugas sudah sinkron.');
                 }
 
             } catch(e) {
@@ -3871,15 +3957,15 @@ const formattedTime = targetDate.toLocaleTimeString('id-ID', { hour12: false, ho
                 const cameraPermission = await navigator.permissions.query({ name: 'camera' });
                 resultsHTML += createResultItem(
                     cameraPermission.state === 'granted' ? 'ok' : 'warning',
-                    'Izin Kamera', `Status: ${cameraPermission.state}. Jika 'prompt' atau 'denied', pengguna harus mengizinkan akses saat diminta.`
+                    'Izin Kamera', `Status: ${cameraPermission.state}.`
                 );
                 const geoPermission = await navigator.permissions.query({ name: 'geolocation' });
                 resultsHTML += createResultItem(
                     geoPermission.state === 'granted' ? 'ok' : 'warning',
-                    'Izin Lokasi (GPS)', `Status: ${geoPermission.state}. Jika 'prompt' atau 'denied', pengguna harus mengizinkan akses saat diminta.`
+                    'Izin Lokasi (GPS)', `Status: ${geoPermission.state}.`
                 );
             } catch(e) {
-                 resultsHTML += createResultItem('warning', 'Izin Browser', 'Pengecekan izin otomatis tidak didukung di browser ini. Izin akan diminta saat fitur digunakan.');
+                 resultsHTML += createResultItem('warning', 'Izin Browser', 'Pengecekan izin otomatis tidak didukung di browser ini.');
             }
 
             resultsHTML += '</ul>';
@@ -3893,10 +3979,10 @@ const formattedTime = targetDate.toLocaleTimeString('id-ID', { hour12: false, ho
         };
 
         const fixSystem = () => {
-            if (confirm("ANDA YAKIN?\n\nIni adalah tindakan perbaikan otomatis (self-repair).\n\nIni akan menghapus semua pengaturan lokal (daftar pegawai, ruangan, tugas, GPS, dll.) dan mengembalikannya ke kondisi default. Data absensi di Google Sheets TIDAK akan terhapus.\n\nAksi ini disarankan jika ada error pada data lokal atau inkonsistensi.\n\nLanjutkan?")) {
+            if (confirm("ANDA YAKIN?\n\nIni akan menghapus semua pengaturan lokal (pegawai, ruangan, tugas, dll.) dan mengembalikannya ke kondisi default. Data absensi di Google Sheets TIDAK akan terhapus.\n\nLanjutkan?")) {
                 const keysToRemove = ['employeeList', 'roomData', 'jobAllocations', 'gpsPresetList', 'loginCredentials', 'activeGpsCoords', 'attendanceSettings', 'reminderSettings'];
                 keysToRemove.forEach(key => localStorage.removeItem(key));
-                alert('Log: Perbaikan berhasil dijalankan. Data lokal telah direset! Aplikasi akan dimuat ulang untuk menerapkan konfigurasi default.');
+                alert('Perbaikan berhasil. Data lokal telah direset! Aplikasi akan dimuat ulang.');
                 window.location.reload();
             }
         };
@@ -3906,7 +3992,7 @@ const formattedTime = targetDate.toLocaleTimeString('id-ID', { hour12: false, ho
             const originalText = btn.querySelector('span').textContent;
             btn.disabled = true;
             btn.querySelector('span').textContent = 'Mengecek...';
-            resultsContainer.innerHTML = `<div class="flex justify-center p-4"><div class="loader"></div><p class="ml-4">Sensor sedang memeriksa kesehatan sistem...</p></div>`;
+            resultsContainer.innerHTML = `<div class="flex justify-center p-4"><div class="loader"></div><p class="ml-4">Memeriksa kesehatan sistem...</p></div>`;
             fixContainer.classList.add('hidden');
 
             await runAllChecks();
@@ -3934,5 +4020,3 @@ const formattedTime = targetDate.toLocaleTimeString('id-ID', { hour12: false, ho
 </script>
 </body>
 </html>
-
-
