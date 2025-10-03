@@ -494,8 +494,9 @@
 <div id="app-wrapper">
 
     <div id="login-page" class="main-view">
-<main class="relative z-10 flex items-center justify-center flex-grow p-4 sm:p-0">
-    <div class="login-card glass-card p-6 sm:p-8 md:p-10 w-full max-w-lg text-white slide-in-up relative"> 
+        <main class="relative z-10 flex items-center justify-center flex-grow p-4 sm:p-0">
+            <div class="login-card glass-card p-6 sm:p-8 md:p-10 w-full max-w-lg text-white slide-in-up">
+                
                 <div class="text-center mb-8">
                     <img src="Logo MS Str.png" alt="Logo" class="logo-img mx-auto mb-4 w-28 h-28 transform transition-transform duration-300 hover:scale-110">
                     <h2 class="text-2xl md:text-3xl font-extrabold tracking-tight text-text-primary">Sistem Informasi Kebersihan</h2>
@@ -542,9 +543,6 @@
                      <span>Keluar</span>
                     </button>
                 </form>
-             <a href="https://drive.google.com/drive/folders/1PhiyoC2ZXHXYuXJyC4PaRQa4qsDtmfTx?usp=sharing" target="_blank" rel="noopener noreferrer" class="btn btn-secondary w-full mt-4 text-center">
-    PANDUAN
-</a>
             </div>
         </main>
     </div>
@@ -931,7 +929,71 @@
         }
     }
 
-      document.addEventListener('DOMContentLoaded', async () => {
+    /**
+     * Titik masuk utama aplikasi setelah DOM siap.
+     * Logika diubah untuk mempercepat waktu tampil.
+     */
+    document.addEventListener('DOMContentLoaded', async () => {
+        console.log("DOM Content Loaded. Memulai inisialisasi aplikasi.");
+        const initialLoader = document.getElementById('initial-loader');
+        const loaderText = initialLoader.querySelector('p');
+        const appContainer = document.getElementById('app-container');
+
+        initParticleAnimation();
+
+        // --- TAHAP 1: Ambil data penting dan tampilkan UI secepat mungkin ---
+        loaderText.textContent = 'Menyinkronkan pengaturan...';
+        await fetchAppSettings(); // Ambil pengaturan dasar
+
+        const loggedInUser = sessionStorage.getItem('absenUser');
+        const userRole = sessionStorage.getItem('absenRole');
+        // --- TAHAP 2: Tampilkan halaman yang sesuai TANPA menunggu model AI ---
+        if (loggedInUser) {
+            // Jika sudah login, langsung tampilkan dashboard
+            document.body.classList.add('dashboard-active');
+            const loginPage = document.getElementById('login-page');
+            if (loginPage) loginPage.remove(); // Hapus halaman login dari DOM
+
+            if (userRole === "Pengawas") {
+                renderSupervisorPage();
+            } else if (userRole === "Pengunjung") {
+                renderVisitorPage();
+            } else {
+                renderAttendancePage(loggedInUser);
+                // PENTING: Panggil pemuatan model AI di sini, hanya untuk halaman absensi.
+                // Fungsi ini berjalan di latar belakang setelah UI ditampilkan.
+                loadFaceApiModels(); 
+            }
+
+        } else {
+            // Jika belum login, tampilkan halaman login
+            document.body.classList.remove('dashboard-active');
+            const employeeList = getEmployeeList();
+            renderLoginPage(employeeList);
+        }
+
+        // --- TAHAP 3: Sembunyikan loader awal karena UI sudah siap ---
+        initialLoader.style.opacity = '0';
+        setTimeout(() => {
+            initialLoader.style.display = 'none';
+            if (appContainer) {
+                appContainer.style.visibility = 'visible';
+                appContainer.style.opacity = '1';
+            }
+        }, 500); // Tunggu 0.5 detik untuk transisi fade-out
+
+        // CATATAN: Pemuatan model AI yang berat sudah dipindahkan dari sini.
+    });
+
+    /**
+     * Titik masuk utama aplikasi setelah DOM siap.
+     * PERBAIKAN: Logika diubah untuk mempercepat waktu login.
+     */
+    /**
+     * Titik masuk utama aplikasi setelah DOM siap.
+     * Logika diubah untuk mempercepat waktu tampil.
+     */
+    document.addEventListener('DOMContentLoaded', async () => {
         console.log("DOM Content Loaded. Memulai inisialisasi aplikasi.");
         const initialLoader = document.getElementById('initial-loader');
         const loaderText = initialLoader.querySelector('p');
@@ -1621,7 +1683,7 @@
         const forgotPasswordLink = document.getElementById('forgot-password-link');
         const passwordStatusText = document.getElementById('password-status-text');
         const exitLoginBtn = document.getElementById('exit-login-btn');
-
+        
         // Gunakan employeeList dari parameter, bukan memanggil getEmployeeList() lagi
         if (employeeList.length > 0) {
             usernameSelect.innerHTML = '<option value="" disabled selected>-- Pilih Nama Anda --</option>' + 
